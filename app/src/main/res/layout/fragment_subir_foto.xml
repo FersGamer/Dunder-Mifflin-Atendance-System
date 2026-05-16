@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="24dp">
+        <!-- PASO INDICADOR -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="24dp">
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:layout_width="60dp"
+                android:layout_height="4dp"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.barra"
+                android:background="@color/neutral_gris"
+                android:layout_marginEnd="4dp"/>
+            <com.google.android.material.imageview.ShapeableImageView
+                android:layout_width="60dp"
+                android:layout_height="10dp"
+                android:layout_gravity="center_vertical"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.barra"
+                android:background="@color/primario_azul"/>
+        </LinearLayout>
+
+        <!-- TÍTULO -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="Paso 1: Foto de Perfil"
+            android:textColor="@color/primario_azul"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:textAlignment="center"/>
+
+        <!-- SUBTÍTULO -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="32dp"
+            android:lineSpacingExtra="4dp"
+            android:text="@string/indicaciones_foto"
+            android:textColor="@color/secundario_gris"
+            android:textSize="14sp"
+            android:textAlignment="center"/>
+
+        <!-- BOTÓN FOTO -->
+        <ImageButton
+            android:id="@+id/btnFoto"
+            android:layout_width="230dp"
+            android:layout_height="232dp"
+            android:background="@drawable/bg_foto"
+            android:src="@drawable/ic_camera"
+            android:scaleType="fitCenter"
+            android:padding="65dp"
+            app:tint="@color/primario_azul"
+            android:layout_marginBottom="16dp"
+            android:contentDescription="Tomar foto de perfil" />
+
+        <!-- NOTA DE SEGURIDAD -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:background="@drawable/bg_nota_info"
+            android:padding="14dp"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="32dp">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@android:drawable/ic_dialog_info"
+                app:tint="#857661"
+                android:layout_marginEnd="10dp"/>
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Asegúrate de estar en un lugar iluminado y con fondo neutro."
+                android:textSize="13sp"
+                android:textColor="#857661"
+                android:lineSpacingExtra="3dp"/>
+        </LinearLayout>
+
+        <!-- BOTÓN SIGUIENTE -->
+        <Button
+            android:id="@+id/btnFinRegistro"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="Finalizar Registro"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:backgroundTint="@color/primario_azul"
+            android:stateListAnimator="@null"
+            android:layout_marginBottom="16dp"
+            app:cornerRadius="50dp"/>
+
+        <!-- LINK AYUDA -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="Omitir por ahora"
+            android:textSize="13sp"
+            android:textColor="@color/primario_azul"
+            android:textStyle="italic"/>
+
+    </LinearLayout>
+</ScrollView>
