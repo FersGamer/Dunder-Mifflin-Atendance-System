@@ -4,7 +4,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#EFE7DA">
+    android:background="#EFE7DA"
+    android:paddingTop="30dp">
 
     <!-- Encabezado Fijo -->
     <com.google.android.material.appbar.MaterialToolbar
