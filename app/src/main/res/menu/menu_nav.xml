@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/Inicio"
+        android:icon="@drawable/ic_inicio"
+        android:title="Inicio"/>
+    <item
+        android:id="@+id/QR"
+        android:icon="@drawable/ic_qr"
+        android:title="QR"/>
+    <item
+        android:id="@+id/Asistencia"
+        android:icon="@drawable/ic_asistencia"
+        android:title="Asistencia"/>
+    <item
+        android:id="@+id/Solicitudes"
+        android:icon="@drawable/ic_solicitud"
+        android:title="Solicitudes"/>
+
+    <item
+        android:id="@+id/Agenda"
+        android:icon="@drawable/ic_agenda"
+        android:title="Agenda"/>
+</menu>

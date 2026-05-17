@@ -111,13 +111,16 @@
 
         <!-- LINK AYUDA -->
         <TextView
+            android:id="@+id/tvOmitir"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:text="Omitir por ahora"
             android:textSize="13sp"
             android:textColor="@color/primario_azul"
-            android:textStyle="italic"/>
+            android:textStyle="italic"
+            android:clickable="true"
+            android:focusable="true"/>
 
     </LinearLayout>
 </ScrollView>
