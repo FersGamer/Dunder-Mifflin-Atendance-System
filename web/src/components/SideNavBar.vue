@@ -4,9 +4,9 @@
       <h1 class="font-headline-md text-headline-md text-primary">Dunder Mifflin</h1>
     </div>
     <div class="px-gutter mb-6 flex items-center gap-3">
-      <img :src="user.avatar" alt="Avatar" class="w-12 h-12 rounded-full border border-outline"/>
+      <img :src="usuarioStore.avatar" alt="Avatar" class="w-12 h-12 rounded-full border border-outline"/>
       <div>
-        <p class="font-label-caps text-label-caps text-primary">{{ user.name }}</p>
+        <p class="font-label-caps text-label-caps text-primary">{{ usuarioStore.nombre }}</p>
         <p class="font-body-sm text-body-sm text-on-surface-variant">Regional Manager</p>
       </div>
     </div>
@@ -41,17 +41,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase'
+import { useUsuarioStore } from '../stores/usuario'
 
 const route = useRoute()
 const router = useRouter()
-
-const user = ref({
-  name: 'Cargando...',
-  avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBhvgZFzeT_R00ANxK7_JEntWKEipAM-i-Z5HV6QU_Um53m65rJSp34IA41VktIiLvR81c5s5oqRCFoCR-nFTLoNjY8XPjrMUF4soAGcoq9xFFYUL7Ea6Jc46ffkpSbyDvNVsy4t3KR6oSAzuGC6YJehlDXTYLCsKHROEyZwm8TMKreai26AR45DC2LZlKXkp7BJHIDDdm35RBgAXuTf8JZObz8EVabgdnvOshfyew3dLUUnsU7MSihsh2Es3G4ttg1EWpfoEsybLXr'
-})
+const usuarioStore = useUsuarioStore()
 
 const navItems = [
   { path: '/dashboard',      icon: 'dashboard',       label: 'Dashboard' },
@@ -62,20 +59,11 @@ const navItems = [
 ]
 
 onMounted(async () => {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return
-  const { data } = await supabase
-    .from('empleado')
-    .select('nombres, apellido_paterno')
-    .eq('email', session.user.email)
-    .limit(1)
-  const empleado = data?.[0]
-  if (empleado) {
-    user.value.name = `${empleado.nombres} ${empleado.apellido_paterno}`
-  }
+  await usuarioStore.cargarUsuario()
 })
 
 async function handleLogout() {
+  usuarioStore.limpiar()
   await supabase.auth.signOut()
   router.push('/')
 }

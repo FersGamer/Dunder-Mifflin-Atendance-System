@@ -19,6 +19,5 @@ const navItems = [
   { path: '/departamentos',  icon: 'business_center', label: 'Depts' },
   { path: '/directorio',     icon: 'groups',          label: 'Staff' },
   { path: '/notificaciones', icon: 'notifications',   label: 'Alerts' },
-  { path: '/nuevo-empleado', icon: 'assessment',      label: 'Data' },
 ]
 </script>

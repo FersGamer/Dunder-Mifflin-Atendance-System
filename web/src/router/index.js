@@ -29,7 +29,26 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const { data: { session } } = await supabase.auth.getSession()
+
+  // Si no hay sesión y no es la página de login, redirige al login
   if (!session && to.path !== '/') return '/'
+
+  // Si hay sesión, verificar que sea gerente
+  if (session && to.path !== '/') {
+    const { data } = await supabase
+      .from('empleado')
+      .select('id_departamento')
+      .eq('email', session.user.email)
+      .limit(1)
+
+    const empleado = data?.[0]
+
+    // Si tiene departamento asignado, NO es gerente → redirige al login
+    if (empleado && empleado.id_departamento !== null) {
+      await supabase.auth.signOut()
+      return '/'
+    }
+  }
 })
 
 export default router

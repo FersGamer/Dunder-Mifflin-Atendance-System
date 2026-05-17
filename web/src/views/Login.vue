@@ -61,15 +61,34 @@ const errorMsg = ref('')
 async function handleLogin() {
   loading.value = true
   errorMsg.value = ''
+
   const { error } = await supabase.auth.signInWithPassword({
     email: email.value,
     password: password.value
   })
+
   if (error) {
     errorMsg.value = 'Credenciales incorrectas. Intento registrado.'
+    loading.value = false
+    return
+  }
+
+  // Verificar si es gerente
+  const { data } = await supabase
+    .from('empleado')
+    .select('id_departamento')
+    .eq('email', email.value)
+    .limit(1)
+
+  const empleado = data?.[0]
+
+  if (empleado && empleado.id_departamento !== null) {
+    await supabase.auth.signOut()
+    errorMsg.value = 'Este portal es como mi oficina: solo entra quien yo diga. Y tú no eres yo. Desafortunadamente.'
   } else {
     router.push('/dashboard')
   }
+
   loading.value = false
 }
 </script>
