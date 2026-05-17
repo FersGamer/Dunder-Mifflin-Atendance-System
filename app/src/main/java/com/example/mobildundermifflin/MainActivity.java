@@ -12,9 +12,9 @@ import androidx.fragment.app.FragmentTransaction;
 
 public class MainActivity extends AppCompatActivity {
 
-    private LinearLayout navInicio, navQr, navAsistencia, navSolicitudes, navAgenda;
-    private ImageView ivInicio, ivQr, ivAsistencia, ivSolicitudes, ivAgenda;
-    private TextView tvInicio, tvQr, tvAsistencia, tvSolicitudes, tvAgenda;
+    private LinearLayout navInicio, navQr, navAsistencia, navSolicitudes, nav_cierreSesion;
+    private ImageView ivInicio, ivQr, ivAsistencia, ivSolicitudes, iv_cierreSesion;
+    private TextView tvInicio, tvQr, tvAsistencia, tvSolicitudes, tv_cierreSesion;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,19 +26,19 @@ public class MainActivity extends AppCompatActivity {
         navQr = findViewById(R.id.nav_qr);
         navAsistencia = findViewById(R.id.nav_asistencia);
         navSolicitudes = findViewById(R.id.nav_solicitudes);
-        navAgenda= findViewById(R.id.nav_agenda);
+        nav_cierreSesion= findViewById(R.id.nav_cierreSesion);
 
         ivInicio = findViewById(R.id.iv_inicio);
         ivQr = findViewById(R.id.iv_qr);
         ivAsistencia = findViewById(R.id.iv_asistencia);
         ivSolicitudes = findViewById(R.id.iv_solicitudes);
-        ivAgenda = findViewById(R.id.iv_agenda);
+        iv_cierreSesion = findViewById(R.id.iv_cierreSesion);
 
         tvInicio = findViewById(R.id.tv_inicio);
         tvQr = findViewById(R.id.tv_qr);
         tvAsistencia = findViewById(R.id.tv_asistencia);
         tvSolicitudes = findViewById(R.id.tv_solicitudes);
-        tvAgenda = findViewById(R.id.tv_agenda);
+        tv_cierreSesion = findViewById(R.id.tv_cierreSesion);
 
         // Listeners
         navInicio.setOnClickListener(v -> {
@@ -61,9 +61,8 @@ public class MainActivity extends AppCompatActivity {
             updateNavUI(R.id.nav_solicitudes);
         });
 
-        navAgenda.setOnClickListener(v -> {
-            loadFragment(new agenda());
-            updateNavUI(R.id.nav_agenda);
+        nav_cierreSesion.setOnClickListener(v -> {
+            finish();
         });
 
         // Estado inicial
@@ -79,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
         resetItem(navQr, ivQr, tvQr);
         resetItem(navAsistencia, ivAsistencia, tvAsistencia);
         resetItem(navSolicitudes, ivSolicitudes, tvSolicitudes);
-        resetItem(navAgenda, ivAgenda, tvAgenda);
+        resetItem(nav_cierreSesion, iv_cierreSesion, tv_cierreSesion);
 
         // Aplicar estado activo al seleccionado
         if (selectedId == R.id.nav_inicio) {
@@ -90,8 +89,8 @@ public class MainActivity extends AppCompatActivity {
             setActiveItem(navAsistencia, ivAsistencia, tvAsistencia);
         } else if (selectedId == R.id.nav_solicitudes) {
             setActiveItem(navSolicitudes, ivSolicitudes, tvSolicitudes);
-        } else if (selectedId == R.id.nav_agenda) {
-            setActiveItem(navAgenda, ivAgenda, tvAgenda);
+        } else if (selectedId == R.id.nav_cierreSesion) {
+            setActiveItem(nav_cierreSesion, iv_cierreSesion, tv_cierreSesion);
         }
     }
 

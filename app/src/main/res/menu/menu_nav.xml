@@ -18,7 +18,7 @@
         android:title="Solicitudes"/>
 
     <item
-        android:id="@+id/Agenda"
-        android:icon="@drawable/ic_agenda"
-        android:title="Agenda"/>
+        android:id="@+id/cierre_sesion"
+        android:icon="@drawable/ic_salida"
+        android:title="Cerrar Sesión"/>
 </menu>
