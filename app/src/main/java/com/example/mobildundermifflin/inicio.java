@@ -57,7 +57,7 @@ public class inicio extends Fragment {
         ivProfileToolbar = requireActivity().findViewById(R.id.ivProfileToolbar);
 
         if (ivProfileToolbar != null) {
-            UIHelper.cargarFotoToolbar(requireContext(), ivProfileToolbar);
+            UIHelper.cargarFotoToolbar(requireActivity(), ivProfileToolbar);
         }
 
         // 3. Cargar el resto de los datos
@@ -145,7 +145,7 @@ public class inicio extends Fragment {
                         .into(ivFotoPerfil);
 
                 if (ivProfileToolbar != null) {
-                    Glide.with(requireContext())
+                    Glide.with(requireActivity())
                             .load(fotoUrl)
                             .placeholder(R.drawable.ejemplo)
                             .circleCrop()

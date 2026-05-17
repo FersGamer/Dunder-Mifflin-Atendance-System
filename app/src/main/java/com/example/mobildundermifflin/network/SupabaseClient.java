@@ -1,5 +1,7 @@
 package com.example.mobildundermifflin.network;
 
+import com.example.mobildundermifflin.BuildConfig;
+
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import retrofit2.Retrofit;
@@ -9,8 +11,9 @@ import java.util.concurrent.TimeUnit;
 
 public class SupabaseClient {
 
-    private static final String SUPABASE_URL = "https://gwbppbdkedatauevokbp.supabase.co";
-    public static final String SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3YnBwYmRrZWRhdGF1ZXZva2JwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NDk0MjksImV4cCI6MjA5NDEyNTQyOX0.c_WWKWvQIGgWO0b2L0q5LIXjk5rCLs8_lOJhjHnm1Lo";
+    private static final String SUPABASE_URL = BuildConfig.SUPABASE_URL;
+    public static final String SUPABASE_KEY = BuildConfig.SUPABASE_KEY;
+
 
     private static Retrofit retrofit = null;
     private static Retrofit authRetrofit = null;
