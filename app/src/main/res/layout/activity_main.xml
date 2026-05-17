@@ -129,6 +129,30 @@
                 android:textColor="#757575"/>
         </LinearLayout>
 
+        <LinearLayout
+            android:id="@+id/nav_agenda"
+            android:layout_width="0dp"
+            android:layout_height="60dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:id="@+id/iv_agenda"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_agenda"
+                app:tint="#757575"/>
+            <TextView
+                android:id="@+id/tv_agenda"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Agenda"
+                android:textSize="12sp"
+                android:textColor="#757575"/>
+        </LinearLayout>
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -12,9 +12,9 @@ import androidx.fragment.app.FragmentTransaction;
 
 public class MainActivity extends AppCompatActivity {
 
-    private LinearLayout navInicio, navQr, navAsistencia, navSolicitudes;
-    private ImageView ivInicio, ivQr, ivAsistencia, ivSolicitudes;
-    private TextView tvInicio, tvQr, tvAsistencia, tvSolicitudes;
+    private LinearLayout navInicio, navQr, navAsistencia, navSolicitudes, navAgenda;
+    private ImageView ivInicio, ivQr, ivAsistencia, ivSolicitudes, ivAgenda;
+    private TextView tvInicio, tvQr, tvAsistencia, tvSolicitudes, tvAgenda;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,16 +26,19 @@ public class MainActivity extends AppCompatActivity {
         navQr = findViewById(R.id.nav_qr);
         navAsistencia = findViewById(R.id.nav_asistencia);
         navSolicitudes = findViewById(R.id.nav_solicitudes);
+        navAgenda= findViewById(R.id.nav_agenda);
 
         ivInicio = findViewById(R.id.iv_inicio);
         ivQr = findViewById(R.id.iv_qr);
         ivAsistencia = findViewById(R.id.iv_asistencia);
         ivSolicitudes = findViewById(R.id.iv_solicitudes);
+        ivAgenda = findViewById(R.id.iv_agenda);
 
         tvInicio = findViewById(R.id.tv_inicio);
         tvQr = findViewById(R.id.tv_qr);
         tvAsistencia = findViewById(R.id.tv_asistencia);
         tvSolicitudes = findViewById(R.id.tv_solicitudes);
+        tvAgenda = findViewById(R.id.tv_agenda);
 
         // Listeners
         navInicio.setOnClickListener(v -> {
@@ -58,6 +61,11 @@ public class MainActivity extends AppCompatActivity {
             updateNavUI(R.id.nav_solicitudes);
         });
 
+        navAgenda.setOnClickListener(v -> {
+            loadFragment(new agenda());
+            updateNavUI(R.id.nav_agenda);
+        });
+
         // Estado inicial
         if (savedInstanceState == null) {
             loadFragment(new inicio());
@@ -71,6 +79,7 @@ public class MainActivity extends AppCompatActivity {
         resetItem(navQr, ivQr, tvQr);
         resetItem(navAsistencia, ivAsistencia, tvAsistencia);
         resetItem(navSolicitudes, ivSolicitudes, tvSolicitudes);
+        resetItem(navAgenda, ivAgenda, tvAgenda);
 
         // Aplicar estado activo al seleccionado
         if (selectedId == R.id.nav_inicio) {
@@ -81,6 +90,8 @@ public class MainActivity extends AppCompatActivity {
             setActiveItem(navAsistencia, ivAsistencia, tvAsistencia);
         } else if (selectedId == R.id.nav_solicitudes) {
             setActiveItem(navSolicitudes, ivSolicitudes, tvSolicitudes);
+        } else if (selectedId == R.id.nav_agenda) {
+            setActiveItem(navAgenda, ivAgenda, tvAgenda);
         }
     }
 
