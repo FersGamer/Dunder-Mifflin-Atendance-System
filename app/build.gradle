@@ -2,9 +2,19 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
+Properties properties = new Properties()
+if (project.rootProject.file('local.properties').exists()) {
+    properties.load(project.rootProject.file('local.properties').newDataInputStream())
+}
+
 android {
     namespace 'com.example.mobildundermifflin'
     compileSdk 36
+
+    //Habilitar la generación de BuildConfig
+    buildFeatures {
+        buildConfig = true
+    }
 
     defaultConfig {
         applicationId "com.example.mobildundermifflin"
@@ -12,7 +22,9 @@ android {
         targetSdk 36
         versionCode 1
         versionName "1.0"
-
+        // Exponer las variables
+        buildConfigField "String", "SUPABASE_URL", "\"${properties.getProperty('SUPABASE_URL')}\""
+        buildConfigField "String", "SUPABASE_KEY", "\"${properties.getProperty('SUPABASE_KEY')}\""
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 

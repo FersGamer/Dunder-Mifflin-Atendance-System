@@ -1,6 +1,7 @@
 package com.example.mobildundermifflin.models;
 
 import com.google.gson.annotations.SerializedName;
+import java.util.List;
 
 public class Empleado {
     @SerializedName("id_empleado")
@@ -23,4 +24,11 @@ public class Empleado {
 
     @SerializedName("id_departamento")
     public int idDepartamento;
+
+    @SerializedName("departamento")
+    public Departamento departamento;
+
+
+    @SerializedName("horario")
+    public List<Horario> horario;
 }

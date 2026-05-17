@@ -35,6 +35,34 @@ public class SessionManager {
     }
 
     public static void cerrarSesion(Context ctx) {
-        ctx.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit().clear().apply();
+        ctx.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+                .edit().clear().apply();
+    }
+
+    public static void guardarDatosEmpleado(Context ctx, String nombre, String apellido,
+                                            String fotoUrl, String departamento, String turno) {
+        SharedPreferences.Editor editor = ctx.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit();
+        editor.putString("nombres", nombre);
+        editor.putString("apellido_paterno", apellido);
+        editor.putString("foto_url", fotoUrl);
+        editor.putString("departamento", departamento);
+        editor.putString("turno", turno);
+        editor.apply();
+    }
+
+    public static String getFotoUrl(Context ctx) {
+        return ctx.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).getString("foto_url", "");
+    }
+
+    public static String getDepartamento(Context ctx) {
+        return ctx.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).getString("departamento", "");
+    }
+
+    public static String getTurno(Context ctx) {
+        return ctx.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).getString("turno", "");
+    }
+    public static void guardarPrimerInicio(Context ctx, boolean valor) {
+        ctx.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+                .edit().putBoolean("primer_inicio", valor).apply();
     }
 }
