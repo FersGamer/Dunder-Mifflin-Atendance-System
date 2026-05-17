@@ -108,6 +108,8 @@ public class login extends AppCompatActivity {
                                             }
                                             android.util.Log.d("LOGIN", "Nombres: " + nombres);
                                             android.util.Log.d("LOGIN", "Apellido: " + apellido);
+                                            // Limpiar sesión anterior
+                                            SessionManager.cerrarSesion(login.this);
                                             SessionManager.guardar(login.this, token, cuenta, nombres, apellido);
 
                                             if (cuenta.primerInicio) {

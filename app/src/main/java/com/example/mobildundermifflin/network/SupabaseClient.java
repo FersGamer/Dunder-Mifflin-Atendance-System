@@ -68,4 +68,24 @@ public class SupabaseClient {
     public static SupabaseApi getApi() {
         return getClient().create(SupabaseApi.class);
     }
+
+    public static SupabaseApi getAuthenticatedApi(String token) {
+        OkHttpClient client = new OkHttpClient.Builder()
+                .addInterceptor(chain -> {
+                    Request request = chain.request().newBuilder()
+                            .addHeader("apikey", SUPABASE_KEY)
+                            .addHeader("Authorization", "Bearer " + token)
+                            .addHeader("Content-Type", "application/json")
+                            .build();
+                    return chain.proceed(request);
+                })
+                .build();
+
+        return new Retrofit.Builder()
+                .baseUrl(SUPABASE_URL + "/rest/v1/")
+                .client(client)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+                .create(SupabaseApi.class);
+    }
 }

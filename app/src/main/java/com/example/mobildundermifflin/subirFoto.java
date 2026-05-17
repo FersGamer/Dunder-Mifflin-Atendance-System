@@ -94,6 +94,7 @@ public class subirFoto extends Fragment {
             if (fotoBitmap == null) {
                 Toast.makeText(getContext(), "Toma una foto primero", Toast.LENGTH_SHORT).show();
             } else {
+
                 subirFotoASupabase();
             }
         });
@@ -134,6 +135,9 @@ public class subirFoto extends Fragment {
         String token = SessionManager.getToken(getContext());
         String nombres = SessionManager.getNombres(getContext());
         String apellido = SessionManager.getApellidoPaterno(getContext());
+
+        Log.d("SUBIR_FOTO", "idEmpleado: " + idEmpleado);
+        Log.d("SUBIR_FOTO", "token vacío: " + token.isEmpty());
 
         if (idEmpleado == -1 || token.isEmpty()) {
             Toast.makeText(getContext(), "Sesión no válida", Toast.LENGTH_SHORT).show();
@@ -183,11 +187,15 @@ public class subirFoto extends Fragment {
 
                 // 3. Guardar URL pública en empleado
                 String fotoUrl = "https://gwbppbdkedatauevokbp.supabase.co/storage/v1/object/public/avatars/" + nombreArchivo;
+                Log.d("SUBIR_FOTO", "Actualizando primer_inicio para id_empleado: eq." + idEmpleado);
 
                 Map<String, String> bodyFoto = new HashMap<>();
                 bodyFoto.put("foto_url", fotoUrl);
+                Log.d("SUBIR_FOTO", "Body foto: " + bodyFoto.toString());
+                Log.d("SUBIR_FOTO", "fotoUrl a guardar: " + fotoUrl);
 
-                SupabaseClient.getApi()
+
+                SupabaseClient.getAuthenticatedApi(token)
                         .actualizarFoto("eq." + idEmpleado, bodyFoto)
                         .enqueue(new Callback<Void>() {
                             @Override
@@ -197,8 +205,12 @@ public class subirFoto extends Fragment {
                                 // 4. Marcar primer_inicio = false
                                 Map<String, Object> bodyInicio = new HashMap<>();
                                 bodyInicio.put("primer_inicio", false);
+                                Log.d("SUBIR_FOTO", "Body primer_inicio: " + bodyInicio.toString());
 
-                                SupabaseClient.getApi()
+                                Log.d("SUBIR_FOTO", "PATCH cuenta URL: cuenta?id_empleado=eq." + idEmpleado);
+                                Log.d("SUBIR_FOTO", "PATCH empleado URL: empleado?id_empleado=eq." + idEmpleado);
+
+                                SupabaseClient.getAuthenticatedApi(token)
                                         .actualizarPrimerInicio("eq." + idEmpleado, bodyInicio)
                                         .enqueue(new Callback<Void>() {
                                             @Override
