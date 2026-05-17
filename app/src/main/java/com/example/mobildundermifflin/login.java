@@ -78,7 +78,6 @@ public class login extends AppCompatActivity {
     }
 
     private void verificarPassword(Cuenta cuenta, String password) {
-        // Usamos el endpoint de Auth de Supabase para verificar la contraseña
         SupabaseClient.getAuthApi()
                 .signIn(new AuthRequest(
                         cuenta.usuarioCuenta + "@dundermifflin.com",
@@ -88,16 +87,44 @@ public class login extends AppCompatActivity {
                     @Override
                     public void onResponse(Call<AuthResponse> call, Response<AuthResponse> response) {
                         if (response.isSuccessful() && response.body() != null) {
-                            // Guardar token y datos en sesión
-                            SessionManager.guardar(login.this, response.body().accessToken, cuenta);
+                            String token = response.body().accessToken;
 
-                            // Verificar primer inicio
-                            if (cuenta.primerInicio) {
-                                startActivity(new Intent(login.this, PrimerInicio.class));
-                            } else {
-                                startActivity(new Intent(login.this, MainActivity.class));
-                            }
-                            finish();
+                            // Buscar datos del empleado
+                            SupabaseClient.getApi()
+                                    .getEmpleadoPorId("eq." + cuenta.idEmpleado, "id_empleado,nombres,apellido_paterno")
+                                    .enqueue(new Callback<List<Empleado>>() {
+                                        @Override
+                                        public void onResponse(Call<List<Empleado>> call, Response<List<Empleado>> r) {
+                                            String nombres = "";
+                                            String apellido = "";
+                                            if (r.body() != null) {
+                                                android.util.Log.d("LOGIN_DEBUG", "Tamaño de la lista: " + r.body().size());
+                                            } else {
+                                                android.util.Log.e("LOGIN_DEBUG", "Error de servidor: " + r.errorBody());
+                                            }
+                                            if (r.isSuccessful() && r.body() != null && !r.body().isEmpty()) {
+                                                nombres = r.body().get(0).nombres;
+                                                apellido = r.body().get(0).apellidoPaterno;
+                                            }
+                                            android.util.Log.d("LOGIN", "Nombres: " + nombres);
+                                            android.util.Log.d("LOGIN", "Apellido: " + apellido);
+                                            SessionManager.guardar(login.this, token, cuenta, nombres, apellido);
+
+                                            if (cuenta.primerInicio) {
+                                                startActivity(new Intent(login.this, PrimerInicio.class));
+                                            } else {
+                                                startActivity(new Intent(login.this, MainActivity.class));
+                                            }
+                                            finish();
+                                        }
+
+                                        @Override
+                                        public void onFailure(Call<List<Empleado>> call, Throwable t) {
+                                            SessionManager.guardar(login.this, token, cuenta, "", "");
+                                            startActivity(new Intent(login.this, MainActivity.class));
+                                            finish();
+                                        }
+                                    });
                         } else {
                             mostrarError("Contraseña incorrecta");
                         }

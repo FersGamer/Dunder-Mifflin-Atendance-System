@@ -14,6 +14,10 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import android.Manifest;
+import android.content.pm.PackageManager;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -41,7 +45,8 @@ import retrofit2.Callback;
 
 public class subirFoto extends Fragment {
 
-    private ImageButton btnFoto;
+    private android.widget.ImageView btnFoto;
+    private static final int REQUEST_CAMERA = 100;
     private Bitmap fotoBitmap = null;
     private ActivityResultLauncher<Intent> camaraLauncher;
 
@@ -58,9 +63,11 @@ public class subirFoto extends Fragment {
                     if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                         fotoBitmap = (Bitmap) result.getData().getExtras().get("data");
                         if (fotoBitmap != null) {
+                            // Cambia esto
                             btnFoto.setImageBitmap(fotoBitmap);
-                            btnFoto.setPadding(0, 0, 0, 0);
                             btnFoto.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+                            btnFoto.setPadding(0, 0, 0, 0);
+                            btnFoto.setBackgroundColor(android.graphics.Color.TRANSPARENT);
                         }
                     }
                 }
@@ -76,7 +83,7 @@ public class subirFoto extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        btnFoto = view.findViewById(R.id.btnFoto);
+        btnFoto = (android.widget.ImageView) view.findViewById(R.id.btnFoto);
         Button btnFinRegistro = view.findViewById(R.id.btnFinRegistro);
         TextView tvOmitir = view.findViewById(R.id.tvOmitir);
 
@@ -94,14 +101,39 @@ public class subirFoto extends Fragment {
         tvOmitir.setOnClickListener(v -> finalizarFlujo());
     }
 
+    // Reemplaza abrirCamara() con esto:
     private void abrirCamara() {
-        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        camaraLauncher.launch(intent);
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED) {
+            // Ya tiene permiso, abrir cámara
+            Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            camaraLauncher.launch(intent);
+        } else {
+            // Solicitar permiso
+            requestPermissions(new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA);
+        }
+    }
+
+    // Agrega este método para manejar la respuesta del permiso
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_CAMERA) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permiso concedido, abrir cámara
+                Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                camaraLauncher.launch(intent);
+            } else {
+                Toast.makeText(getContext(), "Se necesita permiso de cámara", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     private void subirFotoASupabase() {
         int idEmpleado = SessionManager.getIdEmpleado(getContext());
         String token = SessionManager.getToken(getContext());
+        String nombres = SessionManager.getNombres(getContext());
+        String apellido = SessionManager.getApellidoPaterno(getContext());
 
         if (idEmpleado == -1 || token.isEmpty()) {
             Toast.makeText(getContext(), "Sesión no válida", Toast.LENGTH_SHORT).show();
@@ -117,7 +149,15 @@ public class subirFoto extends Fragment {
                 fotoBitmap.compress(Bitmap.CompressFormat.JPEG, 80, baos);
                 byte[] fotoBytes = baos.toByteArray();
 
-                String nombreArchivo = idEmpleado + ".jpg";
+                // Generar nombre del archivo: nombre-apellidopaterno
+                String nombreLimpio = nombres.split(" ")[0].toLowerCase()
+                        .replace("á","a").replace("é","e").replace("í","i")
+                        .replace("ó","o").replace("ú","u");
+                String apellidoLimpio = apellido.toLowerCase()
+                        .replace("á","a").replace("é","e").replace("í","i")
+                        .replace("ó","o").replace("ú","u");
+                String nombreArchivo = nombreLimpio + "-" + apellidoLimpio + ".jpg";
+
                 String urlStorage = "https://gwbppbdkedatauevokbp.supabase.co/storage/v1/object/avatars/" + nombreArchivo;
 
                 // 2. Subir al Storage
@@ -191,6 +231,7 @@ public class subirFoto extends Fragment {
             }
         }).start();
     }
+
 
     private void finalizarFlujo() {
         if (getActivity() != null) {

@@ -35,9 +35,11 @@ public interface SupabaseApi {
     );
 
     @Headers("Prefer: return=minimal")
-    @PATCH("cuenta")
+
+    // Método para actualizar campos específicos de la tabla cuenta
+    @PATCH("rest/v1/cuenta")
     Call<Void> actualizarPrimerInicio(
-            @Query("id_empleado") String id,
-            @Body Map<String, Object> body
+            @Query("id_cuenta") String idCuentaEq, // Filtro para saber qué fila actualizar
+            @Body Map<String, Object> body         // Los datos a cambiar
     );
 }

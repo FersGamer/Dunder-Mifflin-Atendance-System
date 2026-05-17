@@ -57,16 +57,16 @@
             android:textAlignment="center"/>
 
         <!-- BOTÓN FOTO -->
-        <ImageButton
+        <ImageView
             android:id="@+id/btnFoto"
             android:layout_width="230dp"
             android:layout_height="232dp"
             android:background="@drawable/bg_foto"
             android:src="@drawable/ic_camera"
-            android:scaleType="fitCenter"
-            android:padding="65dp"
-            app:tint="@color/primario_azul"
+            android:scaleType="centerCrop"
             android:layout_marginBottom="16dp"
+            android:clickable="true"
+            android:focusable="true"
             android:contentDescription="Tomar foto de perfil" />
 
         <!-- NOTA DE SEGURIDAD -->
