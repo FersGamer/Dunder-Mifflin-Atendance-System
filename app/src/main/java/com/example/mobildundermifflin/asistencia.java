@@ -1,29 +1,39 @@
 package com.example.mobildundermifflin;
 
 import android.graphics.Color;
-import android.content.res.ColorStateList;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.example.mobildundermifflin.models.Asistencia;
+import com.example.mobildundermifflin.network.SupabaseClient;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 public class asistencia extends Fragment {
 
-    public enum TipoRegistro { PUNTUAL, RETRASADO, AUSENTE, INCAPACIDAD }
+    public enum TipoRegistro { PUNTUAL, RETRASADO, AUSENTE, INCAPACIDAD, DESCONOCIDO }
 
     public static class RegistroAsistencia {
         public String fecha;
@@ -45,16 +55,7 @@ public class asistencia extends Fragment {
         }
     }
 
-    private final List<RegistroAsistencia> todosLosRegistros = Arrays.asList(
-            new RegistroAsistencia("17 de Mayo","08:55 AM","06:05 PM", TipoRegistro.PUNTUAL, Calendar.MAY, 2026),
-            new RegistroAsistencia("16 de Mayo","09:12 AM","06:00 PM", TipoRegistro.RETRASADO, Calendar.MAY, 2026),
-            new RegistroAsistencia("14 de Mayo", null, null, TipoRegistro.AUSENTE, Calendar.MAY, 2026),
-            new RegistroAsistencia("15 de Mayo","08:48 AM","06:15 PM", TipoRegistro.PUNTUAL, Calendar.MAY, 2026),
-            new RegistroAsistencia("1 de Abril","08:58 AM","06:00 PM", TipoRegistro.PUNTUAL, Calendar.APRIL, 2026),
-            new RegistroAsistencia("2 de Abril","09:00 AM","06:00 PM", TipoRegistro.PUNTUAL, Calendar.APRIL, 2026),
-            new RegistroAsistencia("31 de Enero", null, null, TipoRegistro.INCAPACIDAD, Calendar.JANUARY, 2026)
-    );
-
+    private List<RegistroAsistencia> todosLosRegistros = new ArrayList<>();
     private Calendar mesActual = Calendar.getInstance();
     private TipoRegistro filtroActivo = null;
     private LinearLayout layoutRegistros;
@@ -93,10 +94,85 @@ public class asistencia extends Fragment {
             });
         }
 
-        actualizarVista();
+        fetchAsistencias();
+    }
+
+    private void fetchAsistencias() {
+        int idEmpleado = SessionManager.getIdEmpleado(requireContext());
+        if (idEmpleado == -1) return;
+
+        SupabaseClient.getApi()
+                .getAsistenciasPorEmpleado("eq." + idEmpleado, "fecha,hora_entrada,hora_salida,estado")
+                .enqueue(new Callback<List<Asistencia>>() {
+                    @Override
+                    public void onResponse(Call<List<Asistencia>> call, Response<List<Asistencia>> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            mapearRegistros(response.body());
+                            actualizarVista();
+                        } else {
+                            Log.e("ASISTENCIA", "Error en respuesta: " + response.code());
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<List<Asistencia>> call, Throwable t) {
+                        Log.e("ASISTENCIA", "Error de red: " + t.getMessage());
+                        if (isAdded()) {
+                            Toast.makeText(getContext(), "Error al cargar asistencias", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+    }
+
+    private void mapearRegistros(List<Asistencia> listaApi) {
+        todosLosRegistros.clear();
+        SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        SimpleDateFormat outputFormat = new SimpleDateFormat("dd 'de' MMMM", new Locale("es", "MX"));
+
+        for (Asistencia api : listaApi) {
+            try {
+                Date date = inputFormat.parse(api.fecha);
+                Calendar cal = Calendar.getInstance();
+                cal.setTime(date);
+
+                TipoRegistro tipo;
+                switch (api.estado.toLowerCase()) {
+                    case "activo": tipo = TipoRegistro.PUNTUAL; break;
+                    case "leve_retraso": tipo = TipoRegistro.RETRASADO; break;
+                    case "falta": tipo = TipoRegistro.AUSENTE; break;
+                    case "incapacidad": tipo = TipoRegistro.INCAPACIDAD; break;
+                    default: tipo = TipoRegistro.DESCONOCIDO; break;
+                }
+
+                todosLosRegistros.add(new RegistroAsistencia(
+                        outputFormat.format(date),
+                        formatTime(api.hora_entrada),
+                        formatTime(api.hora_salida),
+                        tipo,
+                        cal.get(Calendar.MONTH),
+                        cal.get(Calendar.YEAR)
+                ));
+            } catch (ParseException e) {
+                Log.e("ASISTENCIA", "Error parseando fecha: " + api.fecha);
+            }
+        }
+    }
+
+    private String formatTime(String time) {
+        if (time == null || time.isEmpty()) return null;
+        try {
+            // Asumiendo formato "HH:mm:ss" de la BD
+            SimpleDateFormat sdf24 = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
+            SimpleDateFormat sdf12 = new SimpleDateFormat("hh:mm a", Locale.getDefault());
+            Date date = sdf24.parse(time);
+            return sdf12.format(date).toUpperCase();
+        } catch (Exception e) {
+            return time;
+        }
     }
 
     private void actualizarVista() {
+        if (!isAdded()) return;
         actualizarTituloMes();
         construirFiltros();
         aplicarFiltro(filtroActivo);
@@ -154,7 +230,7 @@ public class asistencia extends Fragment {
             chip.setTextColor(Color.WHITE);
         } else {
             chip.setTextColor(color);
-            chip.getBackground().setTintList(null); // Reset tint if needed or use specific color
+            chip.getBackground().setTintList(null);
         }
 
         chip.setOnClickListener(v -> {
@@ -202,11 +278,11 @@ public class asistencia extends Fragment {
             View layoutHoras = item.findViewById(R.id.layoutHoras);
             View tvSinRegistro = item.findViewById(R.id.tvSinRegistro);
 
-            if (r.horaEntrada != null) {
+            if (r.horaEntrada != null && !r.horaEntrada.isEmpty()) {
                 layoutHoras.setVisibility(View.VISIBLE);
                 tvSinRegistro.setVisibility(View.GONE);
                 ((TextView) item.findViewById(R.id.tvEntrada)).setText(r.horaEntrada);
-                ((TextView) item.findViewById(R.id.tvSalida)).setText(r.horaSalida);
+                ((TextView) item.findViewById(R.id.tvSalida)).setText(r.horaSalida != null ? r.horaSalida : "--:--");
                 if (r.tipo == TipoRegistro.RETRASADO) {
                     ((TextView) item.findViewById(R.id.tvEntrada)).setTextColor(Color.RED);
                 }
@@ -216,7 +292,7 @@ public class asistencia extends Fragment {
             }
 
             TextView tvEstado = item.findViewById(R.id.tvEstado);
-            tvEstado.setText(r.tipo.name());
+            tvEstado.setText(getNombreEstado(r.tipo));
             
             int colorEstado = Color.GRAY;
             switch (r.tipo) {
@@ -229,6 +305,16 @@ public class asistencia extends Fragment {
             tvEstado.setTextColor(Color.WHITE);
 
             layoutRegistros.addView(item);
+        }
+    }
+
+    private String getNombreEstado(TipoRegistro tipo) {
+        switch (tipo) {
+            case PUNTUAL: return "PUNTUAL";
+            case RETRASADO: return "RETRASO";
+            case AUSENTE: return "AUSENTE";
+            case INCAPACIDAD: return "INCAPACIDAD";
+            default: return "OTRO";
         }
     }
 }

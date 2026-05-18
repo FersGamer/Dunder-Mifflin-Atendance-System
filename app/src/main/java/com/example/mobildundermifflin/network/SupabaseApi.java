@@ -13,6 +13,7 @@ import retrofit2.http.Body;
 import retrofit2.http.GET;
 import retrofit2.http.Headers;
 import retrofit2.http.PATCH;
+import retrofit2.http.POST;
 import retrofit2.http.Query;
 
 public interface SupabaseApi {
@@ -67,5 +68,20 @@ public interface SupabaseApi {
             @Query("select") String select,
             @Query("order") String order,
             @Query("limit") String limit
+    );
+
+    @Headers("Prefer: return=minimal")
+    @POST("faltas")
+    Call<Void> insertarFalta(@Body Map<String, Object> body);
+
+    @Headers("Prefer: return=minimal")
+    @POST("solicitudes_ausencia")
+    Call<Void> insertarSolicitud(@Body Map<String, Object> body);
+
+    @GET("solicitudes_ausencia")
+    Call<List<com.example.mobildundermifflin.models.SolicitudAusencia>> getSolicitudesPorEmpleado(
+            @Query("id_empleado") String id,
+            @Query("select") String select,
+            @Query("order") String order
     );
 }

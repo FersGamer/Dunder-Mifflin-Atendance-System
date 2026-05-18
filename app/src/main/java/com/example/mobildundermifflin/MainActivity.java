@@ -1,5 +1,6 @@
 package com.example.mobildundermifflin;
 
+import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.widget.ImageView;
@@ -62,6 +63,11 @@ public class MainActivity extends AppCompatActivity {
         });
 
         nav_cierreSesion.setOnClickListener(v -> {
+            // Cerrar sesión y regresar al login
+            SessionManager.cerrarSesion(MainActivity.this);
+            Intent intent = new Intent(MainActivity.this, login.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
             finish();
         });
 

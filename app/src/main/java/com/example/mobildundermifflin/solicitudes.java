@@ -2,6 +2,7 @@ package com.example.mobildundermifflin;
 
 import android.graphics.Color;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,18 +12,21 @@ import android.widget.TextView;
 
 import androidx.fragment.app.Fragment;
 
-import java.util.Arrays;
+import com.example.mobildundermifflin.models.SolicitudAusencia;
+import com.example.mobildundermifflin.network.SupabaseClient;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class solicitudes extends Fragment {
 
-    // ✅ Historial simulado — agrega filas aquí fácilmente
-    private final List<ItemHistorial> historial = Arrays.asList(
-            new ItemHistorial("Permiso médico",    "12 de Octubre • 1 día",   "APROBADO",  "#2E7D32"),
-            new ItemHistorial("Trámite personal",  "05 de Octubre • 0.5 días","PENDIENTE", "#E65100"),
-            new ItemHistorial("Asunto familiar",   "28 de Septiembre • 1 día","RECHAZADO", "#B71C1C"),
-            new ItemHistorial("Vacaciones",        "15 de Agosto • 5 días",   "APROBADO",  "#2E7D32")
-    );
+    private LinearLayout layoutHistorial;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -32,8 +36,9 @@ public class solicitudes extends Fragment {
 
         Button btnVacaciones = view.findViewById(R.id.btnVacaciones);
         Button btnPermiso    = view.findViewById(R.id.btnPermiso);
+        layoutHistorial      = view.findViewById(R.id.layoutHistorial);
 
-        // Cargar Permiso por defecto (tab activo)
+        // Cargar Permiso por defecto
         cargarSubFragmento(new permiso());
         setTabActivo(btnPermiso, btnVacaciones);
 
@@ -47,15 +52,13 @@ public class solicitudes extends Fragment {
             setTabActivo(btnPermiso, btnVacaciones);
         });
 
-        // Historial
-        LinearLayout layoutHistorial = view.findViewById(R.id.layoutHistorial);
-        cargarHistorial(layoutHistorial);
+        cargarHistorialDesdeApi();
 
         return view;
     }
 
     private void cargarSubFragmento(Fragment fragment) {
-        getChildFragmentManager()          // ← childFragmentManager para sub-fragmentos
+        getChildFragmentManager()
                 .beginTransaction()
                 .replace(R.id.subFragmentContainer, fragment)
                 .commit();
@@ -63,40 +66,88 @@ public class solicitudes extends Fragment {
 
     private void setTabActivo(Button activo, Button inactivo) {
         activo.setBackgroundTintList(
-                android.content.res.ColorStateList.valueOf(
-                        Color.parseColor("#1A2E4A")));
+                android.content.res.ColorStateList.valueOf(Color.parseColor("#1A2E4A")));
         activo.setTextColor(Color.WHITE);
 
         inactivo.setBackgroundTintList(
-                android.content.res.ColorStateList.valueOf(
-                        Color.parseColor("#FFFFFF")));
+                android.content.res.ColorStateList.valueOf(Color.parseColor("#FFFFFF")));
         inactivo.setTextColor(Color.parseColor("#857661"));
     }
 
-    private void cargarHistorial(LinearLayout contenedor) {
-        for (ItemHistorial item : historial) {
-            View fila = LayoutInflater.from(requireContext())
-                    .inflate(R.layout.item_historial, contenedor, false);
+    public void cargarHistorialDesdeApi() {
+        if (!isAdded() || getContext() == null) return;
+        
+        int idEmpleado = SessionManager.getIdEmpleado(requireContext());
+        if (idEmpleado == -1) return;
 
-            ((TextView) fila.findViewById(R.id.tvTipoHistorial)).setText(item.tipo);
-            ((TextView) fila.findViewById(R.id.tvFechaHistorial)).setText(item.fecha);
+        SupabaseClient.getApi()
+                .getSolicitudesPorEmpleado("eq." + idEmpleado, "*", "fecha_solicitud.desc")
+                .enqueue(new Callback<List<SolicitudAusencia>>() {
+                    @Override
+                    public void onResponse(Call<List<SolicitudAusencia>> call, Response<List<SolicitudAusencia>> response) {
+                        if (isAdded() && response.isSuccessful() && response.body() != null) {
+                            mostrarHistorial(response.body());
+                        }
+                    }
 
-            TextView tvEstado = fila.findViewById(R.id.tvEstadoHistorial);
-            tvEstado.setText(item.estado);
-            tvEstado.getBackground().setTint(Color.parseColor(item.color));
-
-            contenedor.addView(fila);
-        }
+                    @Override
+                    public void onFailure(Call<List<SolicitudAusencia>> call, Throwable t) {
+                        Log.e("SOLICITUDES", "Error cargando historial: " + t.getMessage());
+                    }
+                });
     }
 
-    // ✅ Modelo del historial
-    static class ItemHistorial {
-        String tipo, fecha, estado, color;
-        ItemHistorial(String tipo, String fecha, String estado, String color) {
-            this.tipo   = tipo;
-            this.fecha  = fecha;
-            this.estado = estado;
-            this.color  = color;
+    private void mostrarHistorial(List<SolicitudAusencia> lista) {
+        if (layoutHistorial == null) return;
+        layoutHistorial.removeAllViews();
+
+        if (lista.isEmpty()) {
+            TextView tvVacio = new TextView(requireContext());
+            tvVacio.setText("No hay solicitudes recientes");
+            tvVacio.setPadding(20, 20, 20, 20);
+            layoutHistorial.addView(tvVacio);
+            return;
+        }
+
+        SimpleDateFormat inputFmt = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        SimpleDateFormat outputFmt = new SimpleDateFormat("dd MMM", new Locale("es", "MX"));
+
+        for (SolicitudAusencia sol : lista) {
+            View fila = LayoutInflater.from(requireContext())
+                    .inflate(R.layout.item_historial, layoutHistorial, false);
+
+            String fechaStr = sol.fechaInicio;
+            try {
+                Date date = inputFmt.parse(sol.fechaInicio);
+                fechaStr = outputFmt.format(date);
+            } catch (Exception ignored) {}
+
+            ((TextView) fila.findViewById(R.id.tvTipoHistorial)).setText("Solicitud de Ausencia");
+            ((TextView) fila.findViewById(R.id.tvFechaHistorial)).setText(fechaStr + " • " + (sol.aprobacion != null ? sol.aprobacion.toUpperCase() : "PENDIENTE"));
+
+            TextView tvEstado = fila.findViewById(R.id.tvEstadoHistorial);
+            String estado = (sol.aprobacion != null) ? sol.aprobacion.toLowerCase() : "pendiente";
+            
+            tvEstado.setText(estado.toUpperCase());
+            
+            int color;
+            if (estado.contains("aprobado")) {
+                color = Color.parseColor("#2E7D32"); // Verde
+            } else if (estado.contains("rechazado")) {
+                color = Color.parseColor("#B71C1C"); // Rojo
+            } else {
+                color = Color.parseColor("#FBC02D"); // Amarillo (Pendiente)
+            }
+
+            tvEstado.getBackground().setTint(color);
+            // Si el color es amarillo, el texto negro se ve mejor, pero por consistencia lo dejamos blanco o manejamos el contraste
+            if (estado.contains("pendiente")) {
+                tvEstado.setTextColor(Color.BLACK);
+            } else {
+                tvEstado.setTextColor(Color.WHITE);
+            }
+
+            layoutHistorial.addView(fila);
         }
     }
 }
