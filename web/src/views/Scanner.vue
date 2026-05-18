@@ -336,7 +336,7 @@ async function procesarQR(contenido) {
       .select("id_asistencias")
       .eq("id_empleado", idEmpleado)
       .eq("fecha", fechaStr)
-      .maybesingle();
+      .maybeSingle();
 
     if (yaRegistro) {
       mostrarFeedback(
