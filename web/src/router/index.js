@@ -9,6 +9,7 @@ import PerfilEmpleado from '../views/PerfilEmpleado.vue'
 import NuevoEmpleado from '../views/NuevoEmpleado.vue'
 import Expediente from '../views/Expediente.vue'
 import Notificaciones from '../views/Notificaciones.vue'
+import Scanner from '../views/Scanner.vue'
 
 const routes = [
   { path: '/',                    component: Login },
@@ -20,6 +21,7 @@ const routes = [
   { path: '/nuevo-empleado',      component: NuevoEmpleado },
   { path: '/expediente/:id',      component: Expediente },
   { path: '/notificaciones',      component: Notificaciones },
+  { path: '/scanner',              component: Scanner },
 ]
 
 const router = createRouter({
@@ -29,10 +31,8 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const { data: { session } } = await supabase.auth.getSession()
-
-  // Si no hay sesión y no es la página de login, redirige al login
-  if (!session && to.path !== '/') return '/'
-
+  // Si no hay sesión, redirigir al login (excepto si ya está en el login o el scanner)
+  if (!session && to.path !== '/' && to.path !== '/scanner') return '/'
   // Si hay sesión, verificar que sea gerente
   if (session && to.path !== '/') {
     const { data } = await supabase

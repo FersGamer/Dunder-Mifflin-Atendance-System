@@ -1,5 +1,5 @@
 <template>
-  <nav class="fixed left-0 top-0 h-full w-64 bg-[#05347E] text-white shadow-lg hidden md:flex flex-col py-unit z-40">
+  <nav class="fixed left-0 top-0 h-full w-64 bg-[#022f84] text-white shadow-lg hidden md:flex flex-col py-unit z-40">
     
     <div class="px-gutter mb-6 pt-4 justify-center flex">
       <img src="../assets/dunder-mifflin-logo.png" 

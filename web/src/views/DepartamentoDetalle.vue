@@ -125,7 +125,7 @@
                     <div class="flex items-center gap-3">
                       <div class="w-10 h-10 rounded border border-outline-variant overflow-hidden bg-surface-variant flex items-center justify-center shrink-0">
                         <img v-if="emp.foto_url" :src="emp.foto_url" :alt="emp.nombres"
-                          class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all"/>
+                          class="w-full h-full object-cover"/>
                         <span v-else class="font-headline-md text-primary text-sm">
                           {{ emp.nombres[0] }}{{ emp.apellido_paterno[0] }}
                         </span>

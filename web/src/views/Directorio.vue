@@ -37,7 +37,7 @@
             <!-- Foto -->
             <div class="h-48 bg-surface-variant overflow-hidden flex items-center justify-center">
               <img v-if="emp.foto_url" :src="emp.foto_url" :alt="emp.nombres"
-                class="w-full h-full object-cover grayscale hover:grayscale-0 transition-all"/>
+                class="w-full h-full object-cover grayscale-0 hover:grayscale transition-all"/>
               <span v-else class="material-symbols-outlined text-6xl text-outline">account_circle</span>
             </div>
 

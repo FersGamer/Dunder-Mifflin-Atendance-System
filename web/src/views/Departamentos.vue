@@ -12,9 +12,6 @@
               placeholder="Buscar departamento..." type="text"/>
           </div>
         </div>
-        <button class="bg-primary text-on-primary font-label-caps text-label-caps px-4 py-2 hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-[2px_2px_0_0_#8C8C8C]">
-          Clock in and out
-        </button>
       </header>
 
       <div class="max-w-6xl mx-auto px-8 py-8">
