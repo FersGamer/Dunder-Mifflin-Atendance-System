@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp">
+
+    <!-- ÍCONO -->
+    <FrameLayout
+        android:layout_width="42dp"
+        android:layout_height="42dp"
+        android:background="@drawable/bg_icono_registro"
+        android:layout_marginEnd="12dp">
+        <ImageView
+            android:id="@+id/ivIconoHistorial"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_gravity="center"
+            android:src="@android:drawable/ic_menu_agenda"/>
+    </FrameLayout>
+
+    <!-- TEXTOS -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvTipoHistorial"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Permiso médico"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="#1A1A1A"/>
+
+        <TextView
+            android:id="@+id/tvFechaHistorial"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="12 de Octubre • 1 día"
+            android:textSize="12sp"
+            android:textColor="#857661"
+            android:layout_marginTop="2dp"/>
+    </LinearLayout>
+
+    <!-- BADGE -->
+    <TextView
+        android:id="@+id/tvEstadoHistorial"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="APROBADO"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:background="@drawable/bg_badge_estado"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="5dp"
+        android:paddingBottom="5dp"/>
+
+</LinearLayout>
