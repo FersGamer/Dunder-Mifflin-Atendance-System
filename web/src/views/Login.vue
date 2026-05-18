@@ -1,11 +1,8 @@
 <template>
   <div class="bg-background text-on-background min-h-screen flex items-center justify-center p-4">
     <main class="w-full max-w-md bg-surface border border-outline-variant rounded shadow-[2px_2px_0_0_#8C8C8C] p-8 relative">
-      <div class="absolute -top-6 left-0 bg-secondary text-on-secondary px-3 py-1 font-label-caps text-label-caps rounded-t border border-b-0 border-outline-variant shadow-[2px_0_0_0_#8C8C8C]">
-        FORMULARIO 01-A
-      </div>
       <div class="text-center mb-8">
-        <h1 class="font-headline-lg text-headline-lg text-primary uppercase tracking-tighter mb-2">Dunder Mifflin</h1>
+        <img src="../assets/dunder-mifflin-logo.png" alt="Dunder Mifflin Logo" class="mx-auto mb-4 w-full h-auto"/>
         <p class="font-body-md text-body-md text-on-surface-variant">Sistema de Control de Asistencia</p>
       </div>
       <div class="space-y-6">
@@ -39,9 +36,6 @@
           Uso exclusivo para personal autorizado de Dunder Mifflin Paper Co.<br/>
           Cualquier acceso no autorizado será reportado a Recursos Humanos.
         </p>
-      </div>
-      <div class="absolute bottom-4 right-4 opacity-20 hover:opacity-100 transition-opacity" title="World's Best Boss">
-        <img alt="Coffee mug" class="w-12 h-12 object-cover rounded-full border border-outline grayscale" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBOpAAVnnm-zF6Y9wJMsUTtmdoTSkrwo1krEfRFMYoXp4R9okFGtuxWYfP90irFkbty2VneG3FV2QslExaicZ4Ueslw1wuLbOAn652nbarUGk-GG4no0RMc95f_ZMZJH2SRjTfGO1uMpHcEFIzjHBMbTyNQpc8YDEjWC8gVKxd03vCpqryQSWB5OT5O24FVSM54eqtkGC9vL3FyHfpmmzcsuY3y07Tjz0b2VGrfYcHoChp0L1JG3gSVc7b9dNnxdKnSrCqLQ86gRdUE"/>
       </div>
     </main>
   </div>

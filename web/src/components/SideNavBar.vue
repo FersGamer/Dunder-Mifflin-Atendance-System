@@ -1,38 +1,39 @@
 <template>
-  <nav class="fixed left-0 top-0 h-full w-64 border-r border-outline-variant bg-secondary-fixed dark:bg-tertiary-container shadow-[2px_0_0_0_rgba(116,119,127,0.1)] hidden md:flex flex-col py-unit z-40">
-    <div class="px-gutter mb-6 pt-4">
-      <h1 class="font-headline-md text-headline-md text-primary">Dunder Mifflin</h1>
+  <nav class="fixed left-0 top-0 h-full w-64 bg-[#05347E] text-white shadow-lg hidden md:flex flex-col py-unit z-40">
+    
+    <div class="px-gutter mb-6 pt-4 justify-center flex">
+      <img src="../assets/dunder-mifflin-logo.png" 
+         alt="Dunder Mifflin Logo" 
+         class="h-18 w-auto object-contain" />
     </div>
-    <div class="px-gutter mb-6 flex items-center gap-3">
-      <img :src="usuarioStore.avatar" alt="Avatar" class="w-12 h-12 rounded-full border border-outline"/>
+
+    <div class="px-gutter mb-8 flex flex-col items-center gap-4 text-center border-b border-white/10 pb-6">
+      <img :src="usuarioStore.avatar" alt="Avatar" class="w-24 h-24 rounded-full border-4 border-[#C8DEF5] shadow-lg"/>
       <div>
-        <p class="font-label-caps text-label-caps text-primary">{{ usuarioStore.nombre }}</p>
-        <p class="font-body-sm text-body-sm text-on-surface-variant">Regional Manager</p>
+        <p class="font-headline-sm text-headline-sm text-white font-bold">{{ usuarioStore.nombre }}</p>
+        <p class="font-body-md text-body-md text-[#C8DEF5]">Regional Manager</p>
       </div>
     </div>
-    <div class="px-gutter mb-8">
-      <button class="w-full bg-primary text-on-primary border border-outline-variant py-2 rounded font-label-caps text-label-caps hover:bg-primary-container transition-colors">
-        New Filing
-      </button>
-    </div>
+
     <ul class="flex-1 px-unit space-y-1">
       <li v-for="item in navItems" :key="item.path">
         <RouterLink :to="item.path"
-          class="flex items-center gap-3 px-3 py-2 rounded font-label-caps text-label-caps transition-all"
+          class="flex items-center gap-3 px-3 py-2 mx-2 rounded-md font-label-caps text-label-caps transition-all"
           :class="$route.path === item.path
-            ? 'bg-surface text-primary border-y border-l border-outline-variant font-bold'
-            : 'text-on-secondary-fixed-variant hover:bg-secondary-container'">
+            ? 'bg-white text-[#05347E] font-bold shadow' 
+            : 'text-[#C8DEF5] hover:bg-white/10 hover:text-white'">
           <span class="material-symbols-outlined" :style="$route.path === item.path ? 'font-variation-settings: FILL 1' : ''">{{ item.icon }}</span>
           <span>{{ item.label }}</span>
         </RouterLink>
       </li>
     </ul>
-    <div class="mt-auto px-unit space-y-1 border-t border-outline-variant pt-4">
-      <a class="flex items-center gap-3 px-3 py-2 rounded text-on-secondary-fixed-variant hover:bg-secondary-container transition-all" href="#">
+
+    <div class="mt-auto px-unit space-y-1 border-t border-white/20 pt-4 pb-4">
+      <a class="flex items-center gap-3 px-3 py-2 mx-2 rounded text-[#C8DEF5] hover:bg-white/10 hover:text-white transition-all" href="#">
         <span class="material-symbols-outlined">settings</span>
         <span class="font-label-caps text-label-caps">Settings</span>
       </a>
-      <button @click="handleLogout" class="flex items-center gap-3 px-3 py-2 rounded text-on-secondary-fixed-variant hover:bg-secondary-container transition-all w-full">
+      <button @click="handleLogout" class="flex items-center gap-3 px-3 py-2 mx-2 rounded text-[#C8DEF5] hover:bg-white/10 hover:text-white transition-all w-full text-left">
         <span class="material-symbols-outlined">logout</span>
         <span class="font-label-caps text-label-caps">Cerrar Sesión</span>
       </button>
@@ -51,11 +52,10 @@ const router = useRouter()
 const usuarioStore = useUsuarioStore()
 
 const navItems = [
-  { path: '/dashboard',      icon: 'dashboard',       label: 'Dashboard' },
-  { path: '/departamentos',  icon: 'business_center', label: 'Departamentos' },
-  { path: '/directorio',     icon: 'groups',          label: 'Empleados' },
-  { path: '/notificaciones', icon: 'notifications',   label: 'Notificaciones' },
-  { path: '/nuevo-empleado', icon: 'person_add',      label: 'Nuevo Empleado' },
+  { path: '/dashboard',      icon: 'dashboard',       label: 'Dashboard' },
+  { path: '/departamentos',  icon: 'business_center', label: 'Departamentos' },
+  { path: '/directorio',     icon: 'groups',          label: 'Empleados' },
+  { path: '/notificaciones', icon: 'notifications',   label: 'Notificaciones' },
 ]
 
 onMounted(async () => {
