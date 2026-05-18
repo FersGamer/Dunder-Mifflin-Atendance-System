@@ -22,9 +22,8 @@
               </div>
             </div>
           </div>
-          <button class="hidden md:flex items-center gap-2 border border-outline px-3 py-1 rounded hover:bg-surface-container-high transition-colors text-primary font-label-caps text-label-caps">
-            <span>Clock Out</span>
-            <span class="material-symbols-outlined">account_circle</span>
+          <button class="bg-primary text-on-primary font-label-caps text-label-caps px-4 py-2 hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-[2px_2px_0_0_#8C8C8C]">
+            Clock in and out
           </button>
         </div>
       </header>

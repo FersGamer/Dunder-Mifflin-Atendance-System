@@ -401,44 +401,16 @@ async function registrarEmpleado() {
   exitoMsg.value = ''
 
   try {
-    // 1. Crear usuario en Supabase Auth
+    // 1. Crear usuario en Auth
     const { data: authData, error: authError } = await supabase.functions.invoke('create-user', {
       body: {
         email: emailGenerado.value,
         password: 'DunderMifflin2026!',
       }
     })
-
     if (authError) throw new Error('Error al crear acceso: ' + authError.message)
 
-    // 2. Insertar horario
-    const { data: horarioData, error: horarioError } = await supabase
-      .from('horario')
-      .insert({
-        turno: form.value.turno,
-        hora_entrada: form.value.hora_entrada,
-        hora_salida: form.value.hora_salida,
-        minutos_tolerancia: 15
-      })
-      .select()
-      .single()
-
-    if (horarioError) throw new Error('Error al crear horario: ' + horarioError.message)
-
-    // 3. Insertar saldo vacaciones
-    const { data: vacData, error: vacError } = await supabase
-      .from('saldo_vacaciones')
-      .insert({
-        ano_periodo: new Date().getFullYear(),
-        dias_otorgados: 12,
-        dias_consumidos: 0
-      })
-      .select()
-      .single()
-
-    if (vacError) throw new Error('Error al crear vacaciones: ' + vacError.message)
-
-    // 4. Insertar empleado
+    // 2. Insertar empleado PRIMERO
     const { data: empData, error: empError } = await supabase
       .from('empleado')
       .insert({
@@ -455,15 +427,42 @@ async function registrarEmpleado() {
 
     if (empError) throw new Error('Error al guardar empleado: ' + empError.message)
 
-    // 5. Insertar cuenta
+    const idEmpleado = empData.id_empleado // ← ya tenemos el ID
+
+    // 3. Insertar horario CON id_empleado
+    const { error: horarioError } = await supabase
+      .from('horario')
+      .insert({
+        turno: form.value.turno,
+        hora_entrada: form.value.hora_entrada,
+        hora_salida: form.value.hora_salida,
+        minutos_tolerancia: 15,
+        id_empleado: idEmpleado  // ← asignamos aquí
+      })
+
+    if (horarioError) throw new Error('Error al crear horario: ' + horarioError.message)
+
+    // 4. Insertar vacaciones CON id_empleado
+    const { error: vacError } = await supabase
+      .from('saldo_vacaciones')
+      .insert({
+        ano_periodo: new Date().getFullYear(),
+        dias_otorgados: 12,
+        dias_consumidos: 0,
+        id_empleado: idEmpleado  // ← asignamos aquí
+      })
+
+    if (vacError) throw new Error('Error al crear vacaciones: ' + vacError.message)
+
+    // 5. Insertar cuenta CON id_empleado
     const { error: cuentaError } = await supabase
       .from('cuenta')
       .insert({
-        id_cuenta: empData.id_empleado,
+        id_cuenta: idEmpleado,
         usuario_cuenta: usuarioGenerado.value,
         huella: false,
         primer_inicio: true,
-        id_empleado: empData.id_empleado
+        id_empleado: idEmpleado
       })
 
     if (cuentaError) throw new Error('Error al crear cuenta: ' + cuentaError.message)
@@ -472,8 +471,7 @@ async function registrarEmpleado() {
     esperandoFoto.value = true
     exitoMsg.value = `Cuenta creada. Pide a ${form.value.nombres} que inicie sesión en la app, actualice su contraseña y tome su foto.`
 
-    // Iniciar la búsqueda de la foto en la BD
-    iniciarEscuchaFoto(empData.id_empleado)
+    iniciarEscuchaFoto(idEmpleado)
 
   } catch (e) {
     errorMsg.value = e.message
