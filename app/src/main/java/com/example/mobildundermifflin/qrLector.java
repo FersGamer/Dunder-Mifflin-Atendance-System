@@ -9,6 +9,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -42,6 +43,7 @@ public class qrLector extends Fragment {
     private LinearLayout layoutRegistros;
     private boolean modoEntrada = true;
     private List<Asistencia> listaAsistencias;
+    private ImageButton btnNotificaciones;
 
     public qrLector() {}
 
@@ -61,6 +63,8 @@ public class qrLector extends Fragment {
         btnSalida      = view.findViewById(R.id.btnSalida);
         tvNombreQr     = view.findViewById(R.id.tvNombreQr);
         layoutRegistros = view.findViewById(R.id.layoutRegistros);
+        btnNotificaciones = view.findViewById(R.id.btnNotificaciones);
+
 
         // Cargar foto en toolbar
         ShapeableImageView ivToolbar = view.findViewById(R.id.ivProfileToolbar);
@@ -99,8 +103,41 @@ public class qrLector extends Fragment {
             mostrarRegistros(); // Actualiza los textos de la lista
         });
 
+        if (btnNotificaciones != null) {
+            btnNotificaciones.setOnClickListener(v -> {
+                // Apagamos el color visualmente al instante
+                btnNotificaciones.clearColorFilter();
+
+                if (getActivity() instanceof MainActivity) {
+                    MainActivity main = (MainActivity) getActivity();
+
+                    // 1. Le decimos al Main que actualice la base de datos
+                    main.marcarNotificacionesComoVistasGlobal();
+
+                    // 2. Le decimos al Main que nos cambie de pantalla
+                    main.irASolicitudes();
+                }
+            });
+        }
+
         // Cargar últimas asistencias
         cargarUltimasAsistencias(idEmpleado);
+    }
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Le pedimos al MainActivity que evalúe y pinte NUESTRA campana
+        if (getActivity() instanceof MainActivity && btnNotificaciones != null) {
+            ((MainActivity) getActivity()).verificarNotificacionesGlobal(btnNotificaciones);
+        }
+    }
+
+    @Override
+    public void onHiddenChanged(boolean hidden) {
+        super.onHiddenChanged(hidden);
+        if (!hidden && getActivity() instanceof MainActivity && btnNotificaciones != null) {
+            ((MainActivity) getActivity()).verificarNotificacionesGlobal(btnNotificaciones);
+        }
     }
 
     // Método nuevo para limpiar y volver a dibujar la lista desde la caché

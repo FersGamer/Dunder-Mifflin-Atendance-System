@@ -64,6 +64,7 @@ public class asistencia extends Fragment {
     private LinearLayout layoutFiltros;
     private TextView tvMesAnio;
     private ImageButton btnMesSiguiente;
+    private ImageButton btnNotificaciones;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -78,6 +79,8 @@ public class asistencia extends Fragment {
         layoutFiltros   = view.findViewById(R.id.layoutFiltros);
         tvMesAnio       = view.findViewById(R.id.tvMesAnio);
         btnMesSiguiente = view.findViewById(R.id.btnMesSiguiente);
+        btnNotificaciones = view.findViewById(R.id.btnNotificaciones);
+
 
         // Cargar foto en toolbar
         ShapeableImageView ivToolbar = view.findViewById(R.id.ivProfileToolbar);
@@ -102,7 +105,41 @@ public class asistencia extends Fragment {
             });
         }
 
+        if (btnNotificaciones != null) {
+            btnNotificaciones.setOnClickListener(v -> {
+                // Apagamos el color visualmente al instante
+                btnNotificaciones.clearColorFilter();
+
+                if (getActivity() instanceof MainActivity) {
+                    MainActivity main = (MainActivity) getActivity();
+
+                    // 1. Le decimos al Main que actualice la base de datos
+                    main.marcarNotificacionesComoVistasGlobal();
+
+                    // 2. Le decimos al Main que nos cambie de pantalla
+                    main.irASolicitudes();
+                }
+            });
+        }
+
         fetchAsistencias();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Le pedimos al MainActivity que evalúe y pinte NUESTRA campana
+        if (getActivity() instanceof MainActivity && btnNotificaciones != null) {
+            ((MainActivity) getActivity()).verificarNotificacionesGlobal(btnNotificaciones);
+        }
+    }
+
+    @Override
+    public void onHiddenChanged(boolean hidden) {
+        super.onHiddenChanged(hidden);
+        if (!hidden && getActivity() instanceof MainActivity && btnNotificaciones != null) {
+            ((MainActivity) getActivity()).verificarNotificacionesGlobal(btnNotificaciones);
+        }
     }
 
     private void fetchAsistencias() {

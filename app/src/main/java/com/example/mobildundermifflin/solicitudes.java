@@ -7,6 +7,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -31,6 +32,7 @@ import retrofit2.Response;
 public class solicitudes extends Fragment {
 
     private LinearLayout layoutHistorial;
+    private ImageButton btnNotificaciones;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -45,6 +47,7 @@ public class solicitudes extends Fragment {
         Button btnVacaciones = view.findViewById(R.id.btnVacaciones);
         Button btnPermiso    = view.findViewById(R.id.btnPermiso);
         layoutHistorial      = view.findViewById(R.id.layoutHistorial);
+        btnNotificaciones    = view.findViewById(R.id.btnNotificaciones);
 
         // Cargar foto en toolbar
         ShapeableImageView ivToolbar = view.findViewById(R.id.ivProfileToolbar);
@@ -66,7 +69,41 @@ public class solicitudes extends Fragment {
             setTabActivo(btnPermiso, btnVacaciones);
         });
 
+        if (btnNotificaciones != null) {
+            btnNotificaciones.setOnClickListener(v -> {
+                // Apagamos el color visualmente al instante
+                btnNotificaciones.clearColorFilter();
+
+                if (getActivity() instanceof MainActivity) {
+                    MainActivity main = (MainActivity) getActivity();
+
+                    // 1. Le decimos al Main que actualice la base de datos
+                    main.marcarNotificacionesComoVistasGlobal();
+
+                    // 2. Le decimos al Main que nos cambie de pantalla
+                    main.irASolicitudes();
+                }
+            });
+        }
+
         cargarHistorialDesdeApi();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Le pedimos al MainActivity que evalúe y pinte NUESTRA campana
+        if (getActivity() instanceof MainActivity && btnNotificaciones != null) {
+            ((MainActivity) getActivity()).verificarNotificacionesGlobal(btnNotificaciones);
+        }
+    }
+
+    @Override
+    public void onHiddenChanged(boolean hidden) {
+        super.onHiddenChanged(hidden);
+        if (!hidden && getActivity() instanceof MainActivity && btnNotificaciones != null) {
+            ((MainActivity) getActivity()).verificarNotificacionesGlobal(btnNotificaciones);
+        }
     }
 
     private void cargarSubFragmento(Fragment fragment) {
@@ -135,23 +172,35 @@ public class solicitudes extends Fragment {
             } catch (Exception ignored) {}
 
             ((TextView) fila.findViewById(R.id.tvTipoHistorial)).setText("Solicitud de Ausencia");
-            ((TextView) fila.findViewById(R.id.tvFechaHistorial)).setText(fechaStr + " • " + (sol.aprobacion != null ? sol.aprobacion.toUpperCase() : "PENDIENTE"));
+            ((TextView) fila.findViewById(R.id.tvFechaHistorial)).setText(fechaStr + " • " +
+                    (sol.aprobacion != null ? sol.aprobacion.toUpperCase() : "PENDIENTE"));
 
             TextView tvEstado = fila.findViewById(R.id.tvEstadoHistorial);
-            String estado = (sol.aprobacion != null) ? sol.aprobacion.toLowerCase() : "pendiente";
-            
+
+            // Limpiamos espacios y pasamos a minúsculas para asegurar la comparación
+            String estado = (sol.aprobacion != null) ? sol.aprobacion.trim().toLowerCase() : "pendiente";
             tvEstado.setText(estado.toUpperCase());
-            
+
             int color;
-            if (estado.contains("aprobado")) {
+            // Usamos la raíz de la palabra para evitar el problema de masculino/femenino
+            if (estado.contains("aprobad")) {
                 color = Color.parseColor("#2E7D32"); // Verde
-            } else if (estado.contains("rechazado")) {
+            } else if (estado.contains("rechazad")) {
                 color = Color.parseColor("#B71C1C"); // Rojo
             } else {
                 color = Color.parseColor("#FBC02D"); // Amarillo (Pendiente)
             }
 
-            tvEstado.getBackground().setTint(color);
+            // Aplicamos el color al fondo de manera segura
+            if (tvEstado.getBackground() != null) {
+                // mutate() rompe el enlace con el recurso compartido
+                tvEstado.getBackground().mutate().setTint(color);
+            } else {
+                // Si no hay drawable asignado en XML, simplemente pintamos el fondo sólido
+                tvEstado.setBackgroundColor(color);
+            }
+
+            // Aplicamos color del texto
             if (estado.contains("pendiente")) {
                 tvEstado.setTextColor(Color.BLACK);
             } else {

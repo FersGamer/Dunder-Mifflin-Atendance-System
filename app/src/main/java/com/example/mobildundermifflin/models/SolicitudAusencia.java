@@ -20,4 +20,7 @@ public class SolicitudAusencia {
 
     @SerializedName("descripcion")
     public String descripcion;
+
+    @SerializedName("visto")
+    public boolean visto;
 }

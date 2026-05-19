@@ -24,7 +24,9 @@ import com.example.mobildundermifflin.utils.UIHelper;
 import com.google.android.material.imageview.ShapeableImageView;
 
 import java.util.List;
+import java.util.Map;
 
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -41,6 +43,23 @@ public class inicio extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_inicio, container, false);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Le pedimos al MainActivity que evalúe y pinte NUESTRA campana
+        if (getActivity() instanceof MainActivity && btnNotificaciones != null) {
+            ((MainActivity) getActivity()).verificarNotificacionesGlobal(btnNotificaciones);
+        }
+    }
+
+    @Override
+    public void onHiddenChanged(boolean hidden) {
+        super.onHiddenChanged(hidden);
+        if (!hidden && getActivity() instanceof MainActivity && btnNotificaciones != null) {
+            ((MainActivity) getActivity()).verificarNotificacionesGlobal(btnNotificaciones);
+        }
     }
 
     @Override
@@ -68,62 +87,42 @@ public class inicio extends Fragment {
         // 3. Configurar campana de notificaciones
         if (btnNotificaciones != null) {
             btnNotificaciones.setOnClickListener(v -> {
+                // Apagamos el color visualmente al instante
+                btnNotificaciones.clearColorFilter();
+
                 if (getActivity() instanceof MainActivity) {
-                    ((MainActivity) getActivity()).irASolicitudes();
+                    MainActivity main = (MainActivity) getActivity();
+
+                    // 1. Le decimos al Main que actualice la base de datos
+                    main.marcarNotificacionesComoVistasGlobal();
+
+                    // 2. Le decimos al Main que nos cambie de pantalla
+                    main.irASolicitudes();
                 }
             });
-            verificarNotificaciones();
         }
 
         // 4. Cargar el resto de los datos
         cargarDatosEmpleado();
     }
 
-    private void verificarNotificaciones() {
-        int idEmpleado = SessionManager.getIdEmpleado(requireContext());
-        if (idEmpleado == -1) return;
-
-        SupabaseClient.getApi()
-                .getSolicitudesPorEmpleado("eq." + idEmpleado, "aprobacion", "fecha_solicitud.desc")
-                .enqueue(new Callback<List<SolicitudAusencia>>() {
-                    @Override
-                    public void onResponse(Call<List<SolicitudAusencia>> call, Response<List<SolicitudAusencia>> response) {
-                        if (isAdded() && response.isSuccessful() && response.body() != null) {
-                            boolean hayRespuestasNuevas = false;
-                            for (SolicitudAusencia sol : response.body()) {
-                                if (sol.aprobacion != null && !sol.aprobacion.equalsIgnoreCase("Pendiente")) {
-                                    hayRespuestasNuevas = true;
-                                    break;
-                                }
-                            }
-                            if (hayRespuestasNuevas) {
-                                // Cambiar color de la campana si hay respuestas (Aceptado/Rechazado)
-                                btnNotificaciones.setColorFilter(Color.parseColor("#FF9800")); // Naranja
-                            }
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(Call<List<SolicitudAusencia>> call, Throwable t) {
-                        Log.e("INICIO", "Error verificando notificaciones: " + t.getMessage());
-                    }
-                });
-    }
 
     private void cargarDatosEmpleado() {
         String nombreGuardado = SessionManager.getNombres(requireContext());
         String fotoGuardada   = SessionManager.getFotoUrl(requireContext());
 
-        // Solo usa datos locales si tiene foto, si no recarga desde Supabase
-        if (!nombreGuardado.isEmpty() && !fotoGuardada.isEmpty()) {
+        // 1. Mostrar lo local PRIMERO para que la pantalla cargue rápido
+        if (!nombreGuardado.isEmpty()) {
             mostrarDatosLocales();
+            // Nota: asumo que tus métodos de asistencias y vacaciones no tienen
+            // bloqueos similares y siempre van a la BD.
             cargarAsistencias(SessionManager.getIdEmpleado(requireContext()));
             cargarVacaciones(SessionManager.getIdEmpleado(requireContext()));
-            return;
         }
 
-        // Cargar desde Supabase
+        // 2. SIN "return;". Ahora SIEMPRE vamos a Supabase a revisar si hay algo nuevo.
         int idEmpleado = SessionManager.getIdEmpleado(requireContext());
+
         SupabaseClient.getApi()
                 .getEmpleadoCompleto("eq." + idEmpleado,
                         "id_empleado,nombres,apellido_paterno,foto_url,departamento(nombre_departamento),horario(hora_entrada,hora_salida)")
@@ -131,26 +130,25 @@ public class inicio extends Fragment {
                     @Override
                     public void onResponse(Call<List<Empleado>> call, Response<List<Empleado>> response) {
                         if (!isAdded() || getActivity() == null) return;
+
                         if (response.isSuccessful() && response.body() != null && !response.body().isEmpty()) {
                             Empleado emp = response.body().get(0);
 
-                            String depto = (emp.departamento != null)
-                                    ? emp.departamento.nombreDepartamento : "Sin departamento";
-                            String turno = (emp.horario != null && !emp.horario.isEmpty())
-                                    ? emp.horario.get(0).horaEntrada + " - " + emp.horario.get(0).horaSalida
-                                    : "Sin horario";
+                            String depto = (emp.departamento != null) ? emp.departamento.nombreDepartamento : "Sin departamento";
+                            String turno = (emp.horario != null && !emp.horario.isEmpty()) ? emp.horario.get(0).horaEntrada + " - " + emp.horario.get(0).horaSalida : "Sin horario";
+                            String nuevaFoto = emp.fotoUrl != null ? emp.fotoUrl : "";
 
-                            Log.d("INICIO", "fotoUrl desde BD: " + emp.fotoUrl);
+                            // Verificamos si la foto que trajo la BD es diferente a la que teníamos guardada
+                            if (!nuevaFoto.equals(fotoGuardada)) {
+                                Log.d("INICIO", "¡Nueva foto detectada! Actualizando UI...");
 
-                            SessionManager.guardarDatosEmpleado(requireContext(),
-                                    emp.nombres, emp.apellidoPaterno,
-                                    emp.fotoUrl != null ? emp.fotoUrl : "",
-                                    depto, turno);
+                                // Guardamos la nueva en SessionManager
+                                SessionManager.guardarDatosEmpleado(requireContext(),
+                                        emp.nombres, emp.apellidoPaterno, nuevaFoto, depto, turno);
 
-                            actualizarUI(emp.nombres, emp.apellidoPaterno,
-                                    emp.fotoUrl != null ? emp.fotoUrl : "", depto, turno);
-                            cargarAsistencias(idEmpleado);
-                            cargarVacaciones(idEmpleado);
+                                // Actualizamos la pantalla con la foto nueva
+                                actualizarUI(emp.nombres, emp.apellidoPaterno, nuevaFoto, depto, turno);
+                            }
                         }
                     }
 
@@ -185,6 +183,8 @@ public class inicio extends Fragment {
                         .load(fotoUrl)
                         .placeholder(R.drawable.ejemplo)
                         .circleCrop()
+                        .skipMemoryCache(true)
+                        .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.NONE)
                         .into(ivFotoPerfil);
 
                 if (ivProfileToolbar != null) {
@@ -192,6 +192,8 @@ public class inicio extends Fragment {
                             .load(fotoUrl)
                             .placeholder(R.drawable.ejemplo)
                             .circleCrop()
+                            .skipMemoryCache(true)
+                            .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.NONE)
                             .into(ivProfileToolbar);
                 }
             }

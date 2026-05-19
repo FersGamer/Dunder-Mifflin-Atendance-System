@@ -3,6 +3,8 @@ package com.example.mobildundermifflin;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.util.Log;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -10,6 +12,17 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
+
+import com.example.mobildundermifflin.models.SolicitudAusencia;
+import com.example.mobildundermifflin.network.SupabaseClient;
+
+import java.util.List;
+import java.util.Map;
+
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -122,5 +135,73 @@ public class MainActivity extends AppCompatActivity {
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
         transaction.replace(R.id.fragmentContainer, fragment);
         transaction.commit();
+    }
+
+    public void verificarNotificacionesGlobal(ImageButton btnCampana) {
+        if (btnCampana == null) return;
+
+        int idEmpleado = SessionManager.getIdEmpleado(this);
+        if (idEmpleado == -1) return;
+
+        SupabaseClient.getApi()
+                .getSolicitudesPorEmpleado("eq." + idEmpleado, "aprobacion,visto", "fecha_solicitud.desc")
+                .enqueue(new Callback<List<SolicitudAusencia>>() {
+                    @Override
+                    public void onResponse(Call<List<SolicitudAusencia>> call, Response<List<SolicitudAusencia>> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            boolean hayNuevas = false;
+
+                            for (SolicitudAusencia sol : response.body()) {
+                                String estado = sol.aprobacion != null ? sol.aprobacion.trim() : "";
+                                if (!estado.equalsIgnoreCase("Pendiente") && !sol.visto) {
+                                    hayNuevas = true;
+                                    break;
+                                }
+                            }
+
+                            // Necesitamos ser finales para usarlos dentro del hilo de la UI
+                            final boolean pintarNaranja = hayNuevas;
+
+                            runOnUiThread(() -> {
+                                if (pintarNaranja) {
+                                    btnCampana.setColorFilter(Color.parseColor("#FF9800"), android.graphics.PorterDuff.Mode.SRC_IN);
+                                } else {
+                                    btnCampana.clearColorFilter();
+                                }
+                            });
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<List<SolicitudAusencia>> call, Throwable t) {
+                        Log.e("MAIN", "Error verificando notificaciones: " + t.getMessage());
+                    }
+                });
+    }
+
+    public void marcarNotificacionesComoVistasGlobal() {
+        int idEmpleado = SessionManager.getIdEmpleado(this);
+        if (idEmpleado == -1) return;
+
+        Map<String, Object> campos = new java.util.HashMap<>();
+        campos.put("visto", true);
+
+        SupabaseClient.getApi()
+                .marcarSolicitudesComoVistas("eq." + idEmpleado, "is.false", campos)
+                .enqueue(new Callback<ResponseBody>() {
+                    @Override
+                    public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                        if (response.isSuccessful()) {
+                            Log.d("MAIN", "Notificaciones marcadas como vistas exitosamente.");
+                        } else {
+                            Log.e("MAIN", "Error al actualizar 'visto': " + response.code());
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<ResponseBody> call, Throwable t) {
+                        Log.e("MAIN", "Fallo de red al marcar como vistas: " + t.getMessage());
+                    }
+                });
     }
 }

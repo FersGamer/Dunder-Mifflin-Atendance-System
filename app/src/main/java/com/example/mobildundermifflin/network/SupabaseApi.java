@@ -8,6 +8,7 @@ import com.example.mobildundermifflin.models.Vacaciones;
 import java.util.List;
 import java.util.Map;
 
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
@@ -83,5 +84,13 @@ public interface SupabaseApi {
             @Query("id_empleado") String id,
             @Query("select") String select,
             @Query("order") String order
+    );
+
+    @Headers("Prefer: return=minimal")
+    @PATCH("solicitudes_ausencia") // Cambia "solicitud_ausencia" por el nombre exacto de tu tabla
+    Call<ResponseBody> marcarSolicitudesComoVistas(
+            @Query("id_empleado") String filtroEmpleado, // Ejemplo: "eq.5"
+            @Query("visto") String filtroVisto,         // Filtramos las que aún están "eq.false"
+            @Body Map<String, Object> camposActualizar
     );
 }
