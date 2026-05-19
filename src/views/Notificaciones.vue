@@ -122,14 +122,6 @@
                         Aprobar
                       </button>
                       <button
-                        @click="responder(notif, 'Cancelada')"
-                        :disabled="procesando === notif.id"
-                        class="font-label-caps text-[11px] tracking-wider bg-surface text-on-surface px-4 py-2 rounded-lg border border-outline-variant hover:bg-surface-container-high transition-colors disabled:opacity-50 flex items-center gap-1.5"
-                      >
-                        <span class="material-symbols-outlined text-body-md">schedule</span>
-                        Cancelar
-                      </button>
-                      <button
                         @click="responder(notif, 'Rechazada')"
                         :disabled="procesando === notif.id"
                         class="font-label-caps text-[11px] tracking-wider bg-surface text-error px-4 py-2 rounded-lg border border-outline-variant hover:bg-error-container transition-colors disabled:opacity-50 flex items-center gap-1.5"
