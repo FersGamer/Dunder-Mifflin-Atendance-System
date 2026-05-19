@@ -47,20 +47,48 @@ export const useNotificaciones = defineStore("notificaciones", () => {
     const { error: err } = await supabase
       .from("solicitudes_ausencia")
       .update({ aprobacion: decision })
-      .eq("id_ausencia", notif._idAusencia);
+      .eq("id_ausencia", notif._idAusencia)
 
     if (err) {
-      error.value = err.message;
-      return false;
+      error.value = err.message
+      return false
     }
 
-    const idx = notificaciones.value.findIndex((n) => n.id === notif.id);
-    if (idx !== -1)
+    // Si se aprueba, actualizar días consumidos en saldo_vacaciones
+    if (decision === "Aprobada") {
+      const idEmpleado = notif.raw?.empleado?.id_empleado
+      const tipoFalta = notif.raw?.faltas?.faltas || ""
+
+      // Solo desconta días si es vacaciones
+      const esVacaciones = tipoFalta === "Vacaciones"
+
+      if (esVacaciones && idEmpleado) {
+        const diasSolicitados = _calcDias(notif.raw?.fecha_inicio, notif.raw?.fecha_fin)
+
+        const { data: saldo } = await supabase
+          .from("saldo_vacaciones")
+          .select("id_vacaciones, dias_consumidos")
+          .eq("id_empleado", idEmpleado)
+          .single()
+
+        if (saldo) {
+          await supabase
+            .from("saldo_vacaciones")
+            .update({ dias_consumidos: saldo.dias_consumidos + diasSolicitados })
+            .eq("id_vacaciones", saldo.id_vacaciones)
+        }
+      }
+    }
+
+    // Actualizar en el store
+    const idx = notificaciones.value.findIndex((n) => n.id === notif.id)
+    if (idx !== -1) {
       notificaciones.value[idx] = {
         ...notificaciones.value[idx],
         aprobacion: decision,
-      };
-    return true;
+      }
+    }
+    return true
   }
 
   // ── Private ──────────────────────────────────────────────────────────────
@@ -136,29 +164,18 @@ export const useNotificaciones = defineStore("notificaciones", () => {
       )
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "asistencias" },
-        async ({ new: row }) => {
-          const { data } = await supabase
-            .from("asistencias")
-            .select(
-              `id_asistencias, fecha, hora_entrada, hora_salida, estado, estatus,
-              empleado ( id_empleado, nombres, apellido_paterno, id_departamento,
-                departamento ( nombre_departamento ) )`,
-            )
-            .eq("id_asistencias", row.id_asistencias)
-            .single();
-          if (!data) return;
-          const sourceId = `asist_${data.id_asistencias}`;
-          const idx = notificaciones.value.findIndex(
-            (n) => n._sourceId === sourceId,
-          );
-          const notif = _asistenciaANotif(data);
-          idx !== -1
-            ? notificaciones.value.splice(idx, 1, notif)
-            : notificaciones.value.unshift(notif);
-        },
+        { event: "UPDATE", schema: "public", table: "solicitudes_ausencia" },
+        ({ new: row }) => {
+          const sourceId = `solic_${row.id_ausencia}`
+          const idx = notificaciones.value.findIndex(n => n._sourceId === sourceId)
+          if (idx !== -1) {
+            notificaciones.value[idx] = {
+              ...notificaciones.value[idx],
+              aprobacion: row.aprobacion
+            }
+          }
+        }
       )
-      .subscribe();
 
     const chanSolic = supabase
       .channel("solicitudes-notif")
@@ -168,18 +185,17 @@ export const useNotificaciones = defineStore("notificaciones", () => {
         async ({ new: row }) => {
           const { data } = await supabase
             .from("solicitudes_ausencia")
-            .select(
-              `id_ausencia, fecha_inicio, fecha_fin, aprobacion, fecha_solicitud,
-              empleado ( id_empleado, nombres, apellido_paterno, id_departamento,
-                departamento ( nombre_departamento ) ),
-              faltas ( faltas, goce_sueldo )`,
-            )
+            .select(`
+          id_ausencia, fecha_inicio, fecha_fin, aprobacion, fecha_solicitud,
+          empleado ( id_empleado, nombres, apellido_paterno, id_departamento,
+            departamento ( nombre_departamento ) )
+        `)
             .eq("id_ausencia", row.id_ausencia)
-            .single();
-          if (data) notificaciones.value.unshift(_solicitudANotif(data));
+            .single()
+          if (data) notificaciones.value.unshift(_solicitudANotif(data))
         },
       )
-      .subscribe();
+      .subscribe()
 
     suscripciones = [chanAsist, chanSolic];
   }
@@ -234,7 +250,9 @@ export const useNotificaciones = defineStore("notificaciones", () => {
       color: "delay",
       etiqueta: "Solicitud PTO",
       titulo: `${_nombreEmpleado(emp)}: Permiso de Ausencia`,
-      descripcion: `Solicita ${dias} día${dias !== 1 ? 's' : ''}. Fechas: ${_formatFecha(s.fecha_inicio)} – ${_formatFecha(s.fecha_fin)}.`,
+      descripcion: s.descripcion
+  ? `${s.descripcion} — ${dias} día${dias !== 1 ? 's' : ''}. Fechas: ${_formatFecha(s.fecha_inicio)} – ${_formatFecha(s.fecha_fin)}.`
+  : `Solicita ${dias} día${dias !== 1 ? 's' : ''}. Fechas: ${_formatFecha(s.fecha_inicio)} – ${_formatFecha(s.fecha_fin)}.`,
       horaTexto: _formatRelativa(s.fecha_solicitud),
       aprobacion: s.aprobacion ?? "Pendiente",
       raw: s,
