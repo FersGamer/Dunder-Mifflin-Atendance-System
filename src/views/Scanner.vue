@@ -157,82 +157,76 @@ let animFrame = null;
 let feedbackTimer = null;
 let relojInterval = null;
 
-// Rastrear el día visual para evitar que registros de ayer se queden en pantalla
-let diaActualVisual = obtenerFechaLocal();
+// Función blindada para obtener fecha y hora exacta de México sin importar el dispositivo
+function obtenerFechaHoraLocal() {
+  const ahora = new Date();
+  const mxTime = new Date(ahora.toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
+  
+  const year = mxTime.getFullYear();
+  const month = String(mxTime.getMonth() + 1).padStart(2, "0");
+  const day = String(mxTime.getDate()).padStart(2, "0");
+  
+  const hours = String(mxTime.getHours()).padStart(2, "0");
+  const minutes = String(mxTime.getMinutes()).padStart(2, "0");
+  const seconds = String(mxTime.getSeconds()).padStart(2, "0");
+
+  return {
+    fechaStr: `${year}-${month}-${day}`,
+    horaStr: `${hours}:${minutes}:${seconds}`,
+    fechaObj: mxTime
+  };
+}
+
+let diaActualVisual = obtenerFechaHoraLocal().fechaStr;
 
 onMounted(async () => {
   actualizarHora();
   relojInterval = setInterval(actualizarHora, 1000);
 
-  // Cargar registros del día al iniciar
   await cargarRegistrosHoy();
 
-  // Sincronización en tiempo real para múltiples escáneres
+  // Sincronización en tiempo real
   supabase
     .channel("asistencias-scanner")
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "asistencias" }, async (payload) => {
-      if (procesando.value) return;
-
-      const { data: emp } = await supabase
-        .from("empleado")
-        .select("nombres, apellido_paterno, foto_url")
-        .eq("id_empleado", payload.new.id_empleado)
-        .single();
-
-      if (emp) {
-        const tipo = payload.new.estado === "activo" ? "exito" : "retraso";
-        agregarLog(payload.new.id_empleado, `${emp.nombres} ${emp.apellido_paterno}`, emp.foto_url, "Entrada", tipo);
-      }
+      if (procesando.value || !payload.new.hora_entrada) return;
+      const { data: emp } = await supabase.from("empleado").select("nombres, apellido_paterno, foto_url").eq("id_empleado", payload.new.id_empleado).single();
+      if (emp) agregarLog(payload.new.id_empleado, `${emp.nombres} ${emp.apellido_paterno}`, emp.foto_url, "Entrada", payload.new.estado === "activo" ? "exito" : "retraso");
     })
     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "asistencias" }, async (payload) => {
-      if (payload.new.hora_salida && !procesando.value) {
-        const { data: emp } = await supabase
-          .from("empleado")
-          .select("nombres, apellido_paterno, foto_url")
-          .eq("id_empleado", payload.new.id_empleado)
-          .single();
-
-        if (emp) {
-          const tipo = payload.new.estatus.includes("Anticipada") ? "retraso" : "exito";
-          agregarLog(payload.new.id_empleado, `${emp.nombres} ${emp.apellido_paterno}`, emp.foto_url, "Salida", tipo);
-        }
+      if (procesando.value) return;
+      if (payload.new.hora_salida && payload.new.hora_salida !== payload.old.hora_salida) {
+        const { data: emp } = await supabase.from("empleado").select("nombres, apellido_paterno, foto_url").eq("id_empleado", payload.new.id_empleado).single();
+        if (emp) agregarLog(payload.new.id_empleado, `${emp.nombres} ${emp.apellido_paterno}`, emp.foto_url, "Salida", payload.new.estatus?.includes("Anticipada") ? "retraso" : "exito");
       }
     })
     .subscribe();
 
-  // Configuración de la Cámara: "user" para cámara frontal
+  // Iniciar cámara frontal
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user" },
-    });
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
     videoEl.value.srcObject = stream;
     videoEl.value.play();
     videoEl.value.addEventListener("playing", () => escanear());
   } catch (e) {
-    mostrarFeedback("error", "Sin acceso a cámara", "Verifica los permisos del navegador.");
+    mostrarFeedback("error", "Sin cámara", "Verifica los permisos.");
   }
 });
 
-function obtenerFechaLocal() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
-}
-
 async function cargarRegistrosHoy() {
-  const hoy = obtenerFechaLocal();
-
+  const { fechaStr } = obtenerFechaHoraLocal();
   const { data } = await supabase
     .from("asistencias")
     .select("id_asistencias, estado, hora_entrada, hora_salida, id_empleado, empleado(nombres, apellido_paterno, foto_url)")
-    .eq("fecha", hoy)
-    .order("hora_entrada", { ascending: false }) // Ordenar por la hora de llegada
+    .eq("fecha", fechaStr)
+    .not("hora_entrada", "is", null)
+    .order("hora_entrada", { ascending: false })
     .limit(10);
 
   if (data) {
     logs.value = data.map((a) => {
-      // Formatear las horas para quitar los segundos (ej: 08:00:00 -> 08:00)
       const hEntrada = a.hora_entrada ? a.hora_entrada.slice(0, 5) : "";
       const hSalida = a.hora_salida ? a.hora_salida.slice(0, 5) : "";
-
       return {
         id: a.id_asistencias,
         id_empleado: a.id_empleado,
@@ -254,10 +248,7 @@ onUnmounted(() => {
 });
 
 function actualizarHora() {
-  horaActual.value = new Date().toLocaleTimeString("es-MX", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  horaActual.value = new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
 }
 
 function escanear() {
@@ -273,17 +264,16 @@ function escanear() {
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const code = jsQR(imageData.data, imageData.width, imageData.height);
 
-  if (code && !procesando.value) {
-    procesarQR(code.data);
-  }
+  if (code && !procesando.value) procesarQR(code.data);
 
   animFrame = setTimeout(() => requestAnimationFrame(escanear), 250);
 }
 
+// LÓGICA DE NEGOCIO CORREGIDA
 async function procesarQR(contenido) {
   const partes = contenido.split("|");
   if (partes.length !== 2) {
-    mostrarFeedback("error", "QR Inválido", "Este código no pertenece al sistema Dunder Mifflin.");
+    mostrarFeedback("error", "QR Inválido", "Formato incorrecto.");
     return;
   }
 
@@ -291,89 +281,125 @@ async function procesarQR(contenido) {
   const tipoQR = partes[1];
 
   if (isNaN(idEmpleado) || !["entrada", "salida"].includes(tipoQR)) {
-    mostrarFeedback("error", "QR Inválido", "No se pudo identificar al empleado.");
+    mostrarFeedback("error", "QR Inválido", "Datos corruptos.");
     return;
   }
 
   procesando.value = true;
 
-  const { data: emp } = await supabase
+  // 1. Obtener datos del empleado y su horario
+  const { data: emp, error: empError } = await supabase
     .from("empleado")
     .select("id_empleado, nombres, apellido_paterno, foto_url, horario(hora_entrada, hora_salida, minutos_tolerancia)")
     .eq("id_empleado", idEmpleado)
     .single();
 
-  if (!emp) {
-    mostrarFeedback("error", "Empleado no encontrado", `ID ${idEmpleado} no existe en el sistema.`);
+  if (empError || !emp) {
+    mostrarFeedback("error", "Empleado no encontrado", "ID no registrado en el sistema.");
     procesando.value = false;
     return;
   }
 
   const nombre = `${emp.nombres} ${emp.apellido_paterno}`;
-  const ahora = new Date();
-  const horaStr = ahora.toTimeString().split(" ")[0];
-  const fechaStr = obtenerFechaLocal();
+  const { fechaStr, horaStr, fechaObj } = obtenerFechaHoraLocal();
+  const horario = emp.horario?.[0]; // Puede ser undefined si no tiene turno
 
+  // ==============================
+  // FLUJO DE ENTRADA
+  // ==============================
   if (tipoQR === "entrada") {
+    
+    // Verificar si ya registró algo hoy
     const { data: yaRegistro } = await supabase
       .from("asistencias")
-      .select("id_asistencias, estado")
+      .select("id_asistencias, estado, hora_entrada")
       .eq("id_empleado", idEmpleado)
       .eq("fecha", fechaStr)
       .maybeSingle();
 
-    if (yaRegistro && yaRegistro.estado !== 'falta') {
-      mostrarFeedback("error", "Ya registrado", `${nombre} ya registró entrada hoy.`);
-      agregarLog(idEmpleado, nombre, emp.foto_url, "Entrada", "error");
+    if (yaRegistro && yaRegistro.hora_entrada && yaRegistro.estado !== 'falta') {
+      mostrarFeedback("error", "Duplicado", `${nombre} ya registró entrada hoy.`);
       procesando.value = false;
       return;
     }
 
-    if (yaRegistro?.estado === 'falta') {
-      await supabase
-        .from('asistencias')
-        .update({ hora_entrada: horaStr, estado: 'leve_retraso', estatus: 'Retraso Mayor' })
-        .eq('id_asistencias', yaRegistro.id_asistencias);
-
-      mostrarFeedback('retraso', '⚠ Falta actualizada', `${nombre} llegó tarde pero se actualizó el registro.`);
-      agregarLog(idEmpleado, nombre, emp.foto_url, 'Entrada', 'retraso');
-      setTimeout(() => { procesando.value = false }, 3000);
-      return;
-    }
-
-    const horario = emp.horario?.[0];
-    let estado = "activo";
-    let estatus = "Puntual";
-
-    if (horario) {
+    // EVALUACIÓN ESTRICTA DEL TURNO
+    let estado = "inusual"; // Por defecto es inusual hasta demostrar lo contrario
+    let estatus = "Sin Turno Asignado";
+    let tipoUi = "retraso"; // Color amarillo de advertencia
+    
+    if (horario && horario.hora_entrada) {
       const [hE, mE] = horario.hora_entrada.split(":").map(Number);
       const tolerancia = horario.minutos_tolerancia || 15;
-      const entradaLimite = new Date(ahora);
-      entradaLimite.setHours(hE, mE + tolerancia, 0);
       
-      if (ahora > entradaLimite) {
+      const inicioTurno = new Date(fechaObj);
+      inicioTurno.setHours(hE, mE, 0);
+      
+      const limitePuntual = new Date(inicioTurno.getTime() + (tolerancia * 60000));
+      const muyTemprano = new Date(inicioTurno.getTime() - (120 * 60000)); // 2 horas antes
+      const finDeTurno = new Date(fechaObj);
+      
+      if (horario.hora_salida) {
+        const [hS, mS] = horario.hora_salida.split(":").map(Number);
+        finDeTurno.setHours(hS, mS, 0);
+      } else {
+        finDeTurno.setHours(23, 59, 59); // Fallback si no hay hora de salida
+      }
+
+      // Lógica de validación
+      if (fechaObj < muyTemprano) {
+        estado = "inusual";
+        estatus = "Turno Equivocado"; // Ej. Es del turno vespertino y llegó en la mañana
+        tipoUi = "retraso";
+      } else if (fechaObj > finDeTurno) {
+        estado = "inusual";
+        estatus = "Fuera de Turno"; // Llegó cuando su turno ya acabó
+        tipoUi = "error";
+      } else if (fechaObj > limitePuntual) {
         estado = "leve_retraso";
         estatus = "Retraso";
+        tipoUi = "retraso";
+      } else {
+        estado = "activo";
+        estatus = "Puntual";
+        tipoUi = "exito";
       }
     }
 
-    await supabase.from("asistencias").insert({
-      id_empleado: idEmpleado,
-      fecha: fechaStr,
-      hora_entrada: horaStr,
-      estado,
-      estatus
-    });
-
-    const tipo = estado === "activo" ? "exito" : "retraso";
-    const titulo = estado === "activo" ? "Entrada Registrada" : "⚠ Entrada con Retraso";
-    const mensaje = estado === "activo" ? `${nombre} — ${horaStr}` : `${nombre} llegó tarde. Hora: ${horaStr}`;
-
-    mostrarFeedback(tipo, titulo, mensaje);
-    agregarLog(idEmpleado, nombre, emp.foto_url, "Entrada", tipo);
+    // EJECUCIÓN EN BASE DE DATOS
+    let dbError = null;
     
-  } else {
-    // SALIDA
+    if (yaRegistro?.estado === 'falta') {
+      // Actualizamos la falta generada por el sistema
+      const res = await supabase.from('asistencias').update({ 
+        hora_entrada: horaStr, estado, estatus 
+      }).eq('id_asistencias', yaRegistro.id_asistencias);
+      dbError = res.error;
+    } else {
+      // Insertamos registro nuevo
+      const res = await supabase.from("asistencias").insert({
+        id_empleado: idEmpleado, fecha: fechaStr, hora_entrada: horaStr, estado, estatus
+      });
+      dbError = res.error;
+    }
+
+    // SI FALLA LA BASE DE DATOS, AVISAR AL USUARIO Y DETENER TODO
+    if (dbError) {
+      mostrarFeedback("error", "Error Base de Datos", dbError.message);
+      procesando.value = false;
+      return;
+    }
+
+    // Si tuvo éxito, mostramos en pantalla
+    const titulo = estado === "activo" ? "Entrada" : `Entrada: ${estatus}`;
+    mostrarFeedback(tipoUi, titulo, `${nombre} — ${horaStr}`);
+    agregarLog(idEmpleado, nombre, emp.foto_url, "Entrada", tipoUi);
+
+  } 
+  // ==============================
+  // FLUJO DE SALIDA
+  // ==============================
+  else {
     const { data: asistencia } = await supabase
       .from("asistencias")
       .select("id_asistencias, hora_salida")
@@ -382,90 +408,89 @@ async function procesarQR(contenido) {
       .maybeSingle();
 
     if (!asistencia) {
-      mostrarFeedback("error", "Sin entrada registrada", `${nombre} no tiene entrada registrada hoy.`);
+      mostrarFeedback("error", "Falta Entrada", `${nombre} no tiene entrada registrada hoy.`);
       procesando.value = false;
       return;
     }
 
     if (asistencia.hora_salida) {
-      mostrarFeedback("error", "Ya registró salida", `${nombre} ya registró salida hoy.`);
+      mostrarFeedback("error", "Duplicado", `${nombre} ya registró su salida.`);
       procesando.value = false;
       return;
     }
 
-    const horario = emp.horario?.[0];
-    let estatusSalida = "Salida a Tiempo";
+    let estatusSalida = "Salida (Sin Turno)";
+    let tipoUi = "exito";
 
-    if (horario) {
+    if (horario && horario.hora_salida) {
       const [hS, mS] = horario.hora_salida.split(":").map(Number);
-      const salidaEsperada = new Date(ahora);
+      const salidaEsperada = new Date(fechaObj);
       salidaEsperada.setHours(hS, mS, 0);
-      if (ahora < salidaEsperada) estatusSalida = "Salida Anticipada";
+      
+      if (fechaObj < salidaEsperada) {
+        estatusSalida = "Salida Anticipada";
+        tipoUi = "retraso"; // Se fue antes de tiempo
+      } else {
+        estatusSalida = "Salida a Tiempo";
+      }
     }
 
-    await supabase
+    // EJECUCIÓN EN BASE DE DATOS
+    const { error: updateError } = await supabase
       .from("asistencias")
       .update({ hora_salida: horaStr, estatus: estatusSalida })
       .eq("id_asistencias", asistencia.id_asistencias);
 
-    const tipoExito = estatusSalida === "Salida Anticipada" ? "retraso" : "exito";
-    mostrarFeedback(tipoExito, "✓ Salida Registrada", `${nombre} — ${horaStr}`);
-    agregarLog(idEmpleado, nombre, emp.foto_url, "Salida", tipoExito);
+    // SI FALLA LA BASE DE DATOS, AVISAR AL USUARIO
+    if (updateError) {
+      mostrarFeedback("error", "Error Base de Datos", updateError.message);
+      procesando.value = false;
+      return;
+    }
+
+    mostrarFeedback(tipoUi, "Turno Finalizado", `${nombre} — ${estatusSalida}`);
+    agregarLog(idEmpleado, nombre, emp.foto_url, "Salida", tipoUi);
   }
 
-  setTimeout(() => {
-    procesando.value = false;
-  }, 3000);
+  // Desbloqueo del escáner
+  setTimeout(() => { procesando.value = false; }, 3000);
 }
 
 function mostrarFeedback(tipo, titulo, mensaje) {
   feedback.value = { tipo, titulo, mensaje };
   if (feedbackTimer) clearTimeout(feedbackTimer);
-  feedbackTimer = setTimeout(() => {
-    feedback.value = null;
-  }, 4000);
+  feedbackTimer = setTimeout(() => { feedback.value = null; }, 4000);
 }
 
-// NUEVA LÓGICA DE ACTUALIZACIÓN DEL LOG (Un registro por empleado)
 function agregarLog(idEmpleado, nombre, foto, accion, tipo) {
-  const hoyReal = obtenerFechaLocal();
+  const { fechaStr, horaStr } = obtenerFechaHoraLocal();
+  const horaCorta = horaStr.slice(0, 5); // Quitar segundos para la UI
 
-  if (hoyReal !== diaActualVisual) {
+  if (fechaStr !== diaActualVisual) {
     logs.value = [];
-    diaActualVisual = hoyReal;
+    diaActualVisual = fechaStr;
   }
 
   const index = logs.value.findIndex(log => log.id_empleado === idEmpleado);
-  const horaActual = new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
 
   if (index !== -1) {
-    // Si ya existe, actualizamos su registro
     const logExistente = logs.value[index];
-    
     if (accion === "Salida") {
       logExistente.accion = "Turno Completado";
-      // Quitamos la palabra "Entrada: " para unirlo limpio (ej. "08:00 - Salida: 16:00")
       const horaEntradaLimpia = logExistente.hora.replace("Entrada: ", "");
-      logExistente.hora = `${horaEntradaLimpia} — Salida: ${horaActual}`;
-      logExistente.tipo = tipo; // Actualizamos el color si se fue temprano
-    } else {
-      // Si por alguna razón vuelve a marcar entrada (ej. error forzado), se resalta
-      logExistente.hora = `Entrada: ${horaActual}`;
-      logExistente.tipo = tipo;
+      logExistente.hora = `${horaEntradaLimpia} — Salida: ${horaCorta}`;
+      logExistente.tipo = tipo; 
     }
-    
-    // Lo sacamos de su posición y lo ponemos hasta arriba
     logs.value.splice(index, 1);
     logs.value.unshift(logExistente);
   } else {
-    // Si no existe en pantalla, es un registro nuevo
     logs.value.unshift({
       id: Date.now(),
       id_empleado: idEmpleado,
       nombre,
       foto,
       accion: accion === "Entrada" ? "En Turno" : "Turno Completado",
-      hora: accion === "Entrada" ? `Entrada: ${horaActual}` : `Salida: ${horaActual}`,
+      hora: accion === "Entrada" ? `Entrada: ${horaCorta}` : `Salida: ${horaCorta}`,
       tipo,
     });
   }
