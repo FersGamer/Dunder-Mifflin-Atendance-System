@@ -53,40 +53,6 @@
             android:textColor="@color/secundario_gris"
             android:textSize="14sp" />
 
-        <!-- CAMPO: CONTRASEÑA ACTUAL -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Contraseña actual"
-            android:textSize="13sp"
-            android:textColor="#3B4C39"
-            android:textStyle="bold"
-            android:layout_marginBottom="6dp"/>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/tilPasswordActual"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
-            app:passwordToggleEnabled="true"
-            app:boxBackgroundColor="#FFFFFF"
-            app:boxStrokeColor="#3B4C39"
-            app:boxCornerRadiusTopStart="12dp"
-            app:boxCornerRadiusTopEnd="12dp"
-            app:boxCornerRadiusBottomStart="12dp"
-            app:boxCornerRadiusBottomEnd="12dp">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etPasswordActual"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="••••••••"
-                android:inputType="textPassword"
-                android:textColor="#3B4C39"
-                android:textColorHint="#857661"/>
-        </com.google.android.material.textfield.TextInputLayout>
-
         <!-- CAMPO: NUEVA CONTRASEÑA -->
         <TextView
             android:layout_width="wrap_content"
@@ -115,7 +81,7 @@
                 android:id="@+id/etPasswordNueva"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Mínimo 8 caracteres"
+                android:hint="Seguridad alta"
                 android:inputType="textPassword"
                 android:textColor="#3B4C39"
                 android:textColorHint="#857661"/>
@@ -155,29 +121,41 @@
                 android:textColorHint="#857661"/>
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- NOTA DE SEGURIDAD -->
+        <!-- NOTA DE SEGURIDAD ACTUALIZADA -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
+            android:orientation="vertical"
             android:background="@drawable/bg_nota_info"
             android:padding="14dp"
-            android:gravity="center_vertical"
             android:layout_marginBottom="32dp">
 
-            <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:src="@android:drawable/ic_dialog_info"
-                app:tint="#857661"
-                android:layout_marginEnd="10dp"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="8dp">
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@android:drawable/ic_dialog_info"
+                    app:tint="#857661"
+                    android:layout_marginEnd="10dp"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Requisitos de seguridad:"
+                    android:textStyle="bold"
+                    android:textSize="13sp"
+                    android:textColor="#857661"/>
+            </LinearLayout>
 
             <TextView
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Tu contraseña debe incluir al menos una mayúscula, un número y un símbolo."
-                android:textSize="13sp"
+                android:text="• Mínimo 8 caracteres.\n• Una mayúscula y una minúscula.\n• Al menos un número y un símbolo.\n• Sin secuencias (ej. 123, abc)."
+                android:textSize="12sp"
                 android:textColor="#857661"
                 android:lineSpacingExtra="3dp"/>
         </LinearLayout>

@@ -10,10 +10,14 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.mobildundermifflin.models.SolicitudAusencia;
 import com.example.mobildundermifflin.network.SupabaseClient;
+import com.example.mobildundermifflin.utils.UIHelper;
+import com.google.android.material.imageview.ShapeableImageView;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -31,12 +35,22 @@ public class solicitudes extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_solicitudes,
-                container, false);
+        return inflater.inflate(R.layout.fragment_solicitudes, container, false);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
 
         Button btnVacaciones = view.findViewById(R.id.btnVacaciones);
         Button btnPermiso    = view.findViewById(R.id.btnPermiso);
         layoutHistorial      = view.findViewById(R.id.layoutHistorial);
+
+        // Cargar foto en toolbar
+        ShapeableImageView ivToolbar = view.findViewById(R.id.ivProfileToolbar);
+        if (ivToolbar != null) {
+            UIHelper.cargarFotoToolbar(requireContext(), ivToolbar);
+        }
 
         // Cargar Permiso por defecto
         cargarSubFragmento(new permiso());
@@ -53,8 +67,6 @@ public class solicitudes extends Fragment {
         });
 
         cargarHistorialDesdeApi();
-
-        return view;
     }
 
     private void cargarSubFragmento(Fragment fragment) {
@@ -140,7 +152,6 @@ public class solicitudes extends Fragment {
             }
 
             tvEstado.getBackground().setTint(color);
-            // Si el color es amarillo, el texto negro se ve mejor, pero por consistencia lo dejamos blanco o manejamos el contraste
             if (estado.contains("pendiente")) {
                 tvEstado.setTextColor(Color.BLACK);
             } else {

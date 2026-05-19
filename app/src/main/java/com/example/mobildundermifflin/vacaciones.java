@@ -17,6 +17,7 @@ import com.example.mobildundermifflin.models.Vacaciones;
 import com.example.mobildundermifflin.network.SupabaseClient;
 import com.google.android.material.textfield.TextInputEditText;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -24,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -33,6 +35,7 @@ public class vacaciones extends Fragment {
 
     private String fechaInicioISO = "";
     private String fechaFinISO = "";
+    private int saldoDisponible = 0;
     private TextView tvSaldoDias;
     private TextInputEditText etInicio, etFin, etNotas;
 
@@ -72,8 +75,8 @@ public class vacaciones extends Fragment {
                     public void onResponse(Call<List<Vacaciones>> call, Response<List<Vacaciones>> response) {
                         if (isAdded() && response.isSuccessful() && response.body() != null && !response.body().isEmpty()) {
                             Vacaciones v = response.body().get(0);
-                            int saldo = v.diasOtorgados - v.diasConsumidos;
-                            tvSaldoDias.setText(String.valueOf(saldo));
+                            saldoDisponible = v.diasOtorgados - v.diasConsumidos;
+                            tvSaldoDias.setText(String.valueOf(saldoDisponible));
                         }
                     }
 
@@ -86,13 +89,17 @@ public class vacaciones extends Fragment {
 
     private void mostrarDatePicker(TextInputEditText campo, boolean esInicio) {
         Calendar c = Calendar.getInstance();
-        new DatePickerDialog(requireContext(), (picker, y, m, d) -> {
+        DatePickerDialog dialog = new DatePickerDialog(requireContext(), (picker, y, m, d) -> {
             String iso = String.format(Locale.US, "%d-%02d-%02d", y, m + 1, d);
             String display = String.format(Locale.US, "%02d/%02d/%d", d, m + 1, y);
             campo.setText(display);
             if (esInicio) fechaInicioISO = iso;
             else fechaFinISO = iso;
-        }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show();
+        }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH));
+        
+        // Validación: No permitir fechas pasadas
+        dialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000);
+        dialog.show();
     }
 
     private void validarYEnviar() {
@@ -106,10 +113,36 @@ public class vacaciones extends Fragment {
             return;
         }
 
-        enviarSolicitudVacaciones(fechaInicioISO, fechaFinISO);
+        // Calcular días solicitados
+        long diasSolicitados = calcularDias(fechaInicioISO, fechaFinISO);
+
+        if (saldoDisponible <= 0) {
+            Toast.makeText(requireContext(), "No tienes días de vacaciones disponibles", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        if (diasSolicitados > saldoDisponible) {
+            Toast.makeText(requireContext(), "No puedes solicitar más de " + saldoDisponible + " días", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        String notas = etNotas.getText() != null ? etNotas.getText().toString().trim() : "";
+        enviarSolicitudVacaciones(fechaInicioISO, fechaFinISO, notas);
     }
 
-    private void enviarSolicitudVacaciones(String inicio, String fin) {
+    private long calcularDias(String inicio, String fin) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+        try {
+            Date d1 = sdf.parse(inicio);
+            Date d2 = sdf.parse(fin);
+            long diff = d2.getTime() - d1.getTime();
+            return TimeUnit.DAYS.convert(diff, TimeUnit.MILLISECONDS) + 1;
+        } catch (ParseException e) {
+            return 0;
+        }
+    }
+
+    private void enviarSolicitudVacaciones(String inicio, String fin, String descripcion) {
         int idEmpleado = SessionManager.getIdEmpleado(requireContext());
 
         Map<String, Object> bodyFalta = new HashMap<>();
@@ -125,6 +158,7 @@ public class vacaciones extends Fragment {
                         bodySolicitud.put("fecha_inicio", inicio);
                         bodySolicitud.put("fecha_fin", fin);
                         bodySolicitud.put("aprobacion", "Pendiente");
+                        bodySolicitud.put("descripcion", descripcion);
                         bodySolicitud.put("fecha_solicitud", new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date()));
                         bodySolicitud.put("id_empleado", idEmpleado);
 

@@ -17,4 +17,7 @@ public class SolicitudAusencia {
 
     @SerializedName("fecha_solicitud")
     public String fechaSolicitud;
+
+    @SerializedName("descripcion")
+    public String descripcion;
 }

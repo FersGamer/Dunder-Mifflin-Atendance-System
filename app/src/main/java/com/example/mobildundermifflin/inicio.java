@@ -1,10 +1,13 @@
 package com.example.mobildundermifflin;
 
+import android.content.Context;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -14,6 +17,7 @@ import androidx.fragment.app.Fragment;
 import com.bumptech.glide.Glide;
 import com.example.mobildundermifflin.models.Empleado;
 import com.example.mobildundermifflin.models.Asistencia;
+import com.example.mobildundermifflin.models.SolicitudAusencia;
 import com.example.mobildundermifflin.models.Vacaciones;
 import com.example.mobildundermifflin.network.SupabaseClient;
 import com.example.mobildundermifflin.utils.UIHelper;
@@ -30,13 +34,13 @@ public class inicio extends Fragment {
     private ShapeableImageView ivFotoPerfil, ivProfileToolbar;
     private TextView tvNombreUsuario, tvDepartamento, tvTurno;
     private TextView tvAsistencia, tvFaltas, tvTiempo, tvDiasRestantes;
+    private ImageButton btnNotificaciones;
 
     public inicio() {}
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_inicio, container, false);
-
     }
 
     @Override
@@ -52,16 +56,58 @@ public class inicio extends Fragment {
         tvFaltas         = view.findViewById(R.id.tvFaltas);
         tvTiempo         = view.findViewById(R.id.tvTiempo);
         tvDiasRestantes  = view.findViewById(R.id.tvDiasRestantes);
+        btnNotificaciones = view.findViewById(R.id.btnNotificaciones);
 
-        // 2. Asignar a la variable global 'ivProfileToolbar' (sin declarar un nuevo ShapeableImageView)
-        ivProfileToolbar = requireActivity().findViewById(R.id.ivProfileToolbar);
+        // 2. CORRECCIÓN: Buscar ivProfileToolbar dentro de la vista del fragmento actual (view)
+        ivProfileToolbar = view.findViewById(R.id.ivProfileToolbar);
 
         if (ivProfileToolbar != null) {
-            UIHelper.cargarFotoToolbar(requireActivity(), ivProfileToolbar);
+            UIHelper.cargarFotoToolbar(requireContext(), ivProfileToolbar);
         }
 
-        // 3. Cargar el resto de los datos
+        // 3. Configurar campana de notificaciones
+        if (btnNotificaciones != null) {
+            btnNotificaciones.setOnClickListener(v -> {
+                if (getActivity() instanceof MainActivity) {
+                    ((MainActivity) getActivity()).irASolicitudes();
+                }
+            });
+            verificarNotificaciones();
+        }
+
+        // 4. Cargar el resto de los datos
         cargarDatosEmpleado();
+    }
+
+    private void verificarNotificaciones() {
+        int idEmpleado = SessionManager.getIdEmpleado(requireContext());
+        if (idEmpleado == -1) return;
+
+        SupabaseClient.getApi()
+                .getSolicitudesPorEmpleado("eq." + idEmpleado, "aprobacion", "fecha_solicitud.desc")
+                .enqueue(new Callback<List<SolicitudAusencia>>() {
+                    @Override
+                    public void onResponse(Call<List<SolicitudAusencia>> call, Response<List<SolicitudAusencia>> response) {
+                        if (isAdded() && response.isSuccessful() && response.body() != null) {
+                            boolean hayRespuestasNuevas = false;
+                            for (SolicitudAusencia sol : response.body()) {
+                                if (sol.aprobacion != null && !sol.aprobacion.equalsIgnoreCase("Pendiente")) {
+                                    hayRespuestasNuevas = true;
+                                    break;
+                                }
+                            }
+                            if (hayRespuestasNuevas) {
+                                // Cambiar color de la campana si hay respuestas (Aceptado/Rechazado)
+                                btnNotificaciones.setColorFilter(Color.parseColor("#FF9800")); // Naranja
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<List<SolicitudAusencia>> call, Throwable t) {
+                        Log.e("INICIO", "Error verificando notificaciones: " + t.getMessage());
+                    }
+                });
     }
 
     private void cargarDatosEmpleado() {
@@ -116,13 +162,12 @@ public class inicio extends Fragment {
     }
 
     private void mostrarDatosLocales() {
+        if (!isAdded()) return;
         String nombres    = SessionManager.getNombres(requireContext());
         String apellido   = SessionManager.getApellidoPaterno(requireContext());
         String fotoUrl    = SessionManager.getFotoUrl(requireContext());
         String depto      = SessionManager.getDepartamento(requireContext());
         String turno      = SessionManager.getTurno(requireContext());
-        Log.d("INICIO", "Datos locales - fotoUrl: " + fotoUrl);
-        Log.d("INICIO", "Datos locales - nombres: " + nombres);
         actualizarUI(nombres, apellido, fotoUrl, depto, turno);
     }
 
@@ -135,8 +180,6 @@ public class inicio extends Fragment {
             tvDepartamento.setText(depto);
             tvTurno.setText("Turno: " + turno);
 
-            Log.d("INICIO", "fotoUrl: " + fotoUrl);
-
             if (fotoUrl != null && !fotoUrl.isEmpty()) {
                 Glide.with(requireContext())
                         .load(fotoUrl)
@@ -145,7 +188,7 @@ public class inicio extends Fragment {
                         .into(ivFotoPerfil);
 
                 if (ivProfileToolbar != null) {
-                    Glide.with(requireActivity())
+                    Glide.with(requireContext())
                             .load(fotoUrl)
                             .placeholder(R.drawable.ejemplo)
                             .circleCrop()
@@ -161,7 +204,7 @@ public class inicio extends Fragment {
                 .enqueue(new Callback<List<Asistencia>>() {
                     @Override
                     public void onResponse(Call<List<Asistencia>> call, Response<List<Asistencia>> response) {
-                        if (!isAdded() || getActivity() == null) return; // ← agrega esto
+                        if (!isAdded() || getActivity() == null) return;
                         if (response.isSuccessful() && response.body() != null) {
                             List<Asistencia> asistencias = response.body();
                             int totalAsistencias = (int) asistencias.stream()
@@ -172,7 +215,7 @@ public class inicio extends Fragment {
                                     .filter(a -> "leve_retraso".equals(a.estado)).count();
 
                             getActivity().runOnUiThread(() -> {
-                                if (!isAdded()) return; // ← y esto
+                                if (!isAdded()) return;
                                 tvAsistencia.setText(String.valueOf(totalAsistencias));
                                 tvFaltas.setText(String.valueOf(totalFaltas));
                                 tvTiempo.setText(String.valueOf(totalRetardos));
@@ -193,12 +236,12 @@ public class inicio extends Fragment {
                 .enqueue(new Callback<List<Vacaciones>>() {
                     @Override
                     public void onResponse(Call<List<Vacaciones>> call, Response<List<Vacaciones>> response) {
-                        if (!isAdded() || getActivity() == null) return; // ← agrega esto
+                        if (!isAdded() || getActivity() == null) return;
                         if (response.isSuccessful() && response.body() != null && !response.body().isEmpty()) {
                             Vacaciones vac = response.body().get(0);
                             int diasRestantes = vac.diasOtorgados - vac.diasConsumidos;
                             getActivity().runOnUiThread(() -> {
-                                if (!isAdded()) return; // ← y esto
+                                if (!isAdded()) return;
                                 tvDiasRestantes.setText(String.valueOf(diasRestantes));
                             });
                         }

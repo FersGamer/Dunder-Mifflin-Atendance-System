@@ -10,12 +10,16 @@ import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import com.example.mobildundermifflin.models.Vacaciones;
 import com.example.mobildundermifflin.network.SupabaseClient;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import retrofit2.Call;
@@ -24,19 +28,30 @@ import retrofit2.Response;
 
 public class permiso extends Fragment {
 
+    private int saldoVacaciones = 0;
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_permiso, container, false);
+        return inflater.inflate(R.layout.fragment_permiso, container, false);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
 
         TextInputEditText etFecha = view.findViewById(R.id.etFechaPermiso);
         etFecha.setOnClickListener(v -> {
             Calendar c = Calendar.getInstance();
-            new DatePickerDialog(requireContext(), (picker, y, m, d) -> {
+            DatePickerDialog dialog = new DatePickerDialog(requireContext(), (picker, y, m, d) -> {
                 // Guardamos en formato ISO para Supabase
                 etFecha.setTag(String.format("%d-%02d-%02d", y, m + 1, d));
                 etFecha.setText(String.format("%02d/%02d/%d", d, m + 1, y));
-            }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show();
+            }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH));
+            
+            // Validación: No permitir fechas pasadas
+            dialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000);
+            dialog.show();
         });
 
         // Tipos mapeados a los valores del enum tipo_falta en Supabase
@@ -68,13 +83,42 @@ public class permiso extends Fragment {
                 }
             }
 
-            enviarSolicitud(fechaISO, fechaISO, tipoEnum);
+            // Validación: Si es vacación, verificar saldo
+            if (tipoEnum.equals("Vacaciones") && saldoVacaciones <= 0) {
+                Toast.makeText(requireContext(), "No tienes días de vacaciones disponibles", Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            // Nota: En permisos, fechaInicio y fechaFin son iguales (1 día máximo)
+            enviarSolicitud(fechaISO, fechaISO, tipoEnum, just);
         });
 
-        return view;
+        cargarSaldoVacaciones();
     }
 
-    private void enviarSolicitud(String fechaInicio, String fechaFin, String tipoFalta) {
+    private void cargarSaldoVacaciones() {
+        int idEmpleado = SessionManager.getIdEmpleado(requireContext());
+        if (idEmpleado == -1) return;
+
+        SupabaseClient.getApi()
+                .getVacacionesPorEmpleado("eq." + idEmpleado, "dias_otorgados,dias_consumidos")
+                .enqueue(new Callback<List<Vacaciones>>() {
+                    @Override
+                    public void onResponse(Call<List<Vacaciones>> call, Response<List<Vacaciones>> response) {
+                        if (isAdded() && response.isSuccessful() && response.body() != null && !response.body().isEmpty()) {
+                            Vacaciones v = response.body().get(0);
+                            saldoVacaciones = v.diasOtorgados - v.diasConsumidos;
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<List<Vacaciones>> call, Throwable t) {
+                        Log.e("PERMISO", "Error saldo: " + t.getMessage());
+                    }
+                });
+    }
+
+    private void enviarSolicitud(String fechaInicio, String fechaFin, String tipoFalta, String descripcion) {
         int idEmpleado = SessionManager.getIdEmpleado(requireContext());
 
         Map<String, Object> bodyFalta = new HashMap<>();
@@ -90,6 +134,7 @@ public class permiso extends Fragment {
                         bodySolicitud.put("fecha_inicio", fechaInicio);
                         bodySolicitud.put("fecha_fin", fechaFin);
                         bodySolicitud.put("aprobacion", "Pendiente");
+                        bodySolicitud.put("descripcion", descripcion);
                         bodySolicitud.put("fecha_solicitud", new java.text.SimpleDateFormat("yyyy-MM-dd")
                                 .format(new java.util.Date()));
                         bodySolicitud.put("id_empleado", idEmpleado);

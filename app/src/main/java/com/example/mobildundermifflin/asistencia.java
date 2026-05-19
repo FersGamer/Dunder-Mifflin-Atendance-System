@@ -17,6 +17,8 @@ import androidx.fragment.app.Fragment;
 
 import com.example.mobildundermifflin.models.Asistencia;
 import com.example.mobildundermifflin.network.SupabaseClient;
+import com.example.mobildundermifflin.utils.UIHelper;
+import com.google.android.material.imageview.ShapeableImageView;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -76,6 +78,12 @@ public class asistencia extends Fragment {
         layoutFiltros   = view.findViewById(R.id.layoutFiltros);
         tvMesAnio       = view.findViewById(R.id.tvMesAnio);
         btnMesSiguiente = view.findViewById(R.id.btnMesSiguiente);
+
+        // Cargar foto en toolbar
+        ShapeableImageView ivToolbar = view.findViewById(R.id.ivProfileToolbar);
+        if (ivToolbar != null) {
+            UIHelper.cargarFotoToolbar(requireContext(), ivToolbar);
+        }
 
         view.findViewById(R.id.btnMesAnterior).setOnClickListener(v -> {
             mesActual.add(Calendar.MONTH, -1);

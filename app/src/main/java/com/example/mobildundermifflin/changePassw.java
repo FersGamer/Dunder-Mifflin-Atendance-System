@@ -12,15 +12,10 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-import com.example.mobildundermifflin.models.AuthRequest;
-import com.example.mobildundermifflin.models.AuthResponse;
 import com.example.mobildundermifflin.network.SupabaseClient;
 import com.google.android.material.textfield.TextInputEditText;
 
 import org.json.JSONObject;
-
-import java.util.HashMap;
-import java.util.Map;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -28,12 +23,9 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-import retrofit2.Call;
-import retrofit2.Callback;
-
 public class changePassw extends Fragment {
 
-    private TextInputEditText etPasswordActual, etPasswordNueva, etPasswordConfirmar;
+    private TextInputEditText etPasswordNueva, etPasswordConfirmar;
 
     public changePassw() {}
 
@@ -46,7 +38,6 @@ public class changePassw extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        etPasswordActual    = view.findViewById(R.id.etPasswordActual);
         etPasswordNueva     = view.findViewById(R.id.etPasswordNueva);
         etPasswordConfirmar = view.findViewById(R.id.etPasswordConfirmar);
         Button btnSiguiente = view.findViewById(R.id.btnSiguiente);
@@ -55,12 +46,11 @@ public class changePassw extends Fragment {
     }
 
     private void cambiarPassword() {
-        String actual    = etPasswordActual.getText().toString().trim();
         String nueva     = etPasswordNueva.getText().toString().trim();
         String confirmar = etPasswordConfirmar.getText().toString().trim();
 
-        // Validaciones
-        if (actual.isEmpty() || nueva.isEmpty() || confirmar.isEmpty()) {
+        // Validaciones básicas
+        if (nueva.isEmpty() || confirmar.isEmpty()) {
             Toast.makeText(getContext(), "Completa todos los campos", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -68,9 +58,10 @@ public class changePassw extends Fragment {
             Toast.makeText(getContext(), "Las contraseñas no coinciden", Toast.LENGTH_SHORT).show();
             return;
         }
-        if (nueva.length() < 8) {
-            Toast.makeText(getContext(), "Mínimo 8 caracteres", Toast.LENGTH_SHORT).show();
-            return;
+
+        // Validación de complejidad
+        if (!validarPasswordSegura(nueva)) {
+            return; // El mensaje de error lo da el método validarPasswordSegura
         }
 
         // Obtener token guardado en sesión
@@ -99,7 +90,6 @@ public class changePassw extends Fragment {
                 Log.d("CHANGE_PASS", "Código: " + response.code());
 
                 if (response.isSuccessful()) {
-                    // Navegar al siguiente fragmento en el hilo principal
                     requireActivity().runOnUiThread(() -> {
                         Toast.makeText(getContext(), "¡Contraseña actualizada!", Toast.LENGTH_SHORT).show();
                         if (getActivity() instanceof PrimerInicio) {
@@ -114,9 +104,52 @@ public class changePassw extends Fragment {
             } catch (Exception e) {
                 Log.e("CHANGE_PASS", "Error: " + e.getMessage());
                 requireActivity().runOnUiThread(() ->
-                        Toast.makeText(getContext(), "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(getContext(), "Error de red: " + e.getMessage(), Toast.LENGTH_SHORT).show()
                 );
             }
         }).start();
+    }
+
+    private boolean validarPasswordSegura(String password) {
+        if (password.length() < 8) {
+            Toast.makeText(getContext(), "Debe tener al menos 8 caracteres", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        if (!password.matches(".*[A-Z].*")) {
+            Toast.makeText(getContext(), "Debe contener al menos una mayúscula", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        if (!password.matches(".*[a-z].*")) {
+            Toast.makeText(getContext(), "Debe contener al menos una minúscula", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        if (!password.matches(".*[0-9].*")) {
+            Toast.makeText(getContext(), "Debe contener al menos un número", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        if (!password.matches(".*[^a-zA-Z0-9].*")) {
+            Toast.makeText(getContext(), "Debe contener al menos un carácter especial", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        if (tieneSecuencias(password)) {
+            Toast.makeText(getContext(), "No se permiten secuencias consecutivas (ej. 123 o abc)", Toast.LENGTH_LONG).show();
+            return false;
+        }
+        return true;
+    }
+
+    private boolean tieneSecuencias(String password) {
+        String p = password.toLowerCase();
+        for (int i = 0; i < p.length() - 2; i++) {
+            char c1 = p.charAt(i);
+            char c2 = p.charAt(i + 1);
+            char c3 = p.charAt(i + 2);
+
+            // Secuencia ascendente (abc, 123)
+            if (c2 == c1 + 1 && c3 == c2 + 1) return true;
+            // Secuencia descendente (cba, 321)
+            if (c2 == c1 - 1 && c3 == c2 - 1) return true;
+        }
+        return false;
     }
 }

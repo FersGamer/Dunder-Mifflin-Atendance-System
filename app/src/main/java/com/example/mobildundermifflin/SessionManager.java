@@ -65,4 +65,13 @@ public class SessionManager {
         ctx.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
                 .edit().putBoolean("primer_inicio", valor).apply();
     }
+
+    public static void setLastNotificationCount(Context ctx, int count) {
+        ctx.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+                .edit().putInt("notif_count", count).apply();
+    }
+
+    public static int getLastNotificationCount(Context ctx) {
+        return ctx.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).getInt("notif_count", 0);
+    }
 }

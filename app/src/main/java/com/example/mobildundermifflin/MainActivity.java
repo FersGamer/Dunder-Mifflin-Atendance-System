@@ -58,8 +58,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         navSolicitudes.setOnClickListener(v -> {
-            loadFragment(new solicitudes());
-            updateNavUI(R.id.nav_solicitudes);
+            irASolicitudes();
         });
 
         nav_cierreSesion.setOnClickListener(v -> {
@@ -76,6 +75,11 @@ public class MainActivity extends AppCompatActivity {
             loadFragment(new inicio());
             updateNavUI(R.id.nav_inicio);
         }
+    }
+
+    public void irASolicitudes() {
+        loadFragment(new solicitudes());
+        updateNavUI(R.id.nav_solicitudes);
     }
 
     private void updateNavUI(int selectedId) {
