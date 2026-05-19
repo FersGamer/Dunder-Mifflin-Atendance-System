@@ -1,14 +1,11 @@
 <template>
   <div class="bg-surface text-on-surface h-screen flex flex-col md:flex-row overflow-hidden font-body-md">
-    <!-- Header móvil -->
     <header
       class="flex justify-between items-center w-full px-8 h-16 bg-surface border-b border-outline-variant md:hidden">
-      <span class="font-headline-md text-headline-md text-primary uppercase tracking-tighter">Dunder Mifflin Paper
-        Co.</span>
+      <span class="font-headline-md text-headline-md text-primary uppercase tracking-tighter">Dunder Mifflin Paper Co.</span>
     </header>
 
     <main class="flex-1 flex flex-col md:flex-row w-full overflow-hidden">
-      <!-- Panel izquierdo: Escáner -->
       <section
         class="flex-1 bg-surface-dim relative flex flex-col border-b md:border-b-0 md:border-r border-outline-variant p-6">
         <div class="flex justify-between items-center mb-4">
@@ -24,14 +21,12 @@
           </div>
         </div>
 
-        <!-- Visor de cámara -->
         <div
           class="flex-1 relative bg-ink-black rounded-lg overflow-hidden border border-outline shadow-[2px_2px_0_0_#8C8C8C]">
           <video ref="videoEl" class="absolute inset-0 w-full h-full object-cover opacity-80 grayscale" autoplay muted
             playsinline></video>
           <canvas ref="canvasEl" class="hidden"></canvas>
 
-          <!-- Retícula -->
           <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div
               class="w-64 h-64 border-2 border-primary-fixed border-dashed flex flex-col items-center justify-center relative">
@@ -46,7 +41,6 @@
             </div>
           </div>
 
-          <!-- Feedback del escaneo -->
           <transition name="fade">
             <div v-if="feedback"
               class="absolute bottom-4 left-4 right-4 p-4 rounded border flex items-start gap-3 shadow-[2px_2px_0_0_#8C8C8C]"
@@ -75,7 +69,6 @@
           </transition>
         </div>
 
-        <!-- HR Notice -->
         <div class="mt-4 bg-surface p-3 border border-outline-variant text-center">
           <p class="font-memo-mono text-memo-mono text-on-surface-variant">
             Notificación de RRHH: Falsificar escaneos resultará en acción
@@ -84,7 +77,6 @@
         </div>
       </section>
 
-      <!-- Panel derecho: Registro reciente -->
       <section class="w-full md:w-1/3 min-w-[320px] bg-secondary-container p-6 flex flex-col gap-6">
         <div
           class="flex-1 flex flex-col bg-surface border border-outline-variant shadow-[2px_2px_0_0_#8C8C8C] rounded overflow-hidden">
@@ -159,10 +151,14 @@ const feedback = ref(null);
 const logs = ref([]);
 const horaActual = ref("");
 const procesando = ref(false);
+
 let stream = null;
 let animFrame = null;
 let feedbackTimer = null;
 let relojInterval = null;
+
+// Variable global para rastrear en qué día estamos "visualmente" y evitar el Efecto Medianoche
+let diaActualVisual = new Date().toLocaleDateString('en-CA');
 
 onMounted(async () => {
   actualizarHora();
@@ -171,7 +167,7 @@ onMounted(async () => {
   // Cargar registros del día al iniciar
   await cargarRegistrosHoy();
 
-  // Realtime para nuevos registros
+  // Realtime unificado para nuevos registros (Entradas) y actualizaciones (Salidas)
   supabase
     .channel("asistencias-scanner")
     .on(
@@ -182,6 +178,9 @@ onMounted(async () => {
         table: "asistencias",
       },
       async (payload) => {
+        // Si esta misma pantalla acaba de procesar el QR, ignoramos el realtime para no duplicar el log
+        if (procesando.value) return;
+
         const { data: emp } = await supabase
           .from("empleado")
           .select("nombres, apellido_paterno, foto_url")
@@ -194,14 +193,42 @@ onMounted(async () => {
             `${emp.nombres} ${emp.apellido_paterno}`,
             emp.foto_url,
             "Entrada",
-            tipo,
+            tipo
           );
         }
+      }
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "asistencias",
       },
+      async (payload) => {
+        // Detectar si fue una actualización de salida y si no fue generada por esta misma pantalla
+        if (payload.new.hora_salida && !procesando.value) {
+          const { data: emp } = await supabase
+            .from("empleado")
+            .select("nombres, apellido_paterno, foto_url")
+            .eq("id_empleado", payload.new.id_empleado)
+            .single();
+
+          if (emp) {
+            const tipo = payload.new.estatus.includes("Anticipada") ? "retraso" : "exito";
+            agregarLog(
+              `${emp.nombres} ${emp.apellido_paterno}`,
+              emp.foto_url,
+              "Salida",
+              tipo
+            );
+          }
+        }
+      }
     )
     .subscribe();
 
-  // Cámara
+  // Configuración de la Cámara
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "environment" },
@@ -213,7 +240,7 @@ onMounted(async () => {
     mostrarFeedback(
       "error",
       "Sin acceso a cámara",
-      "Verifica los permisos del navegador.",
+      "Verifica los permisos del navegador."
     );
   }
 });
@@ -224,7 +251,7 @@ async function cargarRegistrosHoy() {
   const { data } = await supabase
     .from("asistencias")
     .select(
-      "id_asistencias, estado, hora_entrada, hora_salida, id_empleado, empleado(nombres, apellido_paterno, foto_url)",
+      "id_asistencias, estado, hora_entrada, hora_salida, id_empleado, empleado(nombres, apellido_paterno, foto_url)"
     )
     .eq("fecha", hoy)
     .order("id_asistencias", { ascending: false })
@@ -249,7 +276,7 @@ async function cargarRegistrosHoy() {
 
 onUnmounted(() => {
   if (stream) stream.getTracks().forEach((t) => t.stop());
-  if (animFrame) cancelAnimationFrame(animFrame);
+  if (animFrame) clearTimeout(animFrame); // Usamos clearTimeout porque cambiamos a setTimeout
   if (relojInterval) clearInterval(relojInterval);
   if (feedbackTimer) clearTimeout(feedbackTimer);
 });
@@ -278,7 +305,8 @@ function escanear() {
     procesarQR(code.data);
   }
 
-  animFrame = requestAnimationFrame(escanear);
+  // Optimización de rendimiento: Escanear 4 veces por segundo en lugar de 60
+  animFrame = setTimeout(() => requestAnimationFrame(escanear), 250);
 }
 
 async function procesarQR(contenido) {
@@ -319,12 +347,12 @@ async function procesarQR(contenido) {
   if (tipoQR === 'entrada') {
     const { data: yaRegistro } = await supabase
       .from('asistencias')
-      .select('id_asistencias')
+      .select('id_asistencias, estado')
       .eq('id_empleado', idEmpleado)
       .eq('fecha', fechaStr)
       .maybeSingle()
 
-    if (yaRegistro) {
+    if (yaRegistro && yaRegistro.estado !== 'falta') {
       mostrarFeedback('error', 'Ya registrado', `${nombre} ya registró entrada hoy.`)
       agregarLog(nombre, emp.foto_url, 'Entrada', 'error')
       procesando.value = false
@@ -368,28 +396,24 @@ async function procesarQR(contenido) {
       const unaHoraDespues = new Date(entradaEsperada.getTime() + 60 * 60 * 1000)
 
       if (ahora < unaHoraAntes) {
-        // Más de 1h antes — inusual
         estado = 'activo'
         estatus = 'Puntual'
-        tipo = 'retraso' // amarillo como alerta
+        tipo = 'retraso'
         titulo = '⚠ Registro Inusual'
         mensaje = `${nombre} registró entrada muy temprano (${horaStr}). Se guardó el registro.`
       } else if (ahora > unaHoraDespues) {
-        // Más de 1h después — inusual
         estado = 'leve_retraso'
         estatus = 'Retraso Mayor'
         tipo = 'retraso'
         titulo = '⚠ Entrada muy tarde'
         mensaje = `${nombre} registró entrada inusualmente tarde (${horaStr}).`
       } else if (ahora > limiteRetraso) {
-        // Dentro de 1h pero pasó tolerancia — retardo normal
         estado = 'leve_retraso'
         estatus = 'Retraso'
         tipo = 'retraso'
         titulo = '⚠ Entrada con Retraso'
         mensaje = `${nombre} llegó tarde. Hora: ${horaStr}`
       }
-      // else: dentro del margen normal — estado activo, puntual
     }
 
     const { error: insertError } = await supabase
@@ -402,7 +426,6 @@ async function procesarQR(contenido) {
         estatus
       })
 
-    console.log('Insert entrada:', insertError)
     mostrarFeedback(tipo, titulo, mensaje)
     agregarLog(nombre, emp.foto_url, 'Entrada', tipo)
 
@@ -442,19 +465,16 @@ async function procesarQR(contenido) {
       const unaHoraDespues = new Date(salidaEsperada.getTime() + 60 * 60 * 1000)
 
       if (ahora < unaHoraAntes) {
-        // Salida muy temprana — inusual
         estatusSalida = 'Salida Anticipada'
         tipo = 'retraso'
         titulo = '⚠ Salida muy temprana'
         mensaje = `${nombre} salió inusualmente temprano (${horaStr}).`
       } else if (ahora < salidaEsperada) {
-        // Salida anticipada normal (dentro de 1h antes)
         estatusSalida = 'Salida Anticipada'
         tipo = 'retraso'
         titulo = '⚠ Salida Anticipada'
         mensaje = `${nombre} salió antes del horario (${horaStr}).`
       } else if (ahora > unaHoraDespues) {
-        // Más de 1h después — inusual pero válido
         estatusSalida = 'Salida a Tiempo'
         tipo = 'retraso'
         titulo = '⚠ Salida muy tardía'
@@ -467,7 +487,6 @@ async function procesarQR(contenido) {
       .update({ hora_salida: horaStr, estatus: estatusSalida })
       .eq('id_asistencias', asistencia.id_asistencias)
 
-    console.log('Update salida:', updateError)
     mostrarFeedback(tipo, titulo, mensaje)
     agregarLog(nombre, emp.foto_url, 'Salida', tipo)
   }
@@ -484,6 +503,14 @@ function mostrarFeedback(tipo, titulo, mensaje) {
 }
 
 function agregarLog(nombre, foto, accion, tipo) {
+  const hoyReal = new Date().toLocaleDateString('en-CA');
+
+  // Lógica para curar el "Efecto Medianoche"
+  if (hoyReal !== diaActualVisual) {
+    logs.value = [];
+    diaActualVisual = hoyReal;
+  }
+
   logs.value.unshift({
     id: Date.now(),
     nombre,
@@ -495,6 +522,7 @@ function agregarLog(nombre, foto, accion, tipo) {
     }),
     tipo,
   });
+  
   // Máximo 10 en el log
   if (logs.value.length > 10) logs.value.pop();
 }
