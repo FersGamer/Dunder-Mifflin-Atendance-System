@@ -1,4 +1,3 @@
-// stores/notificacionesStore.js
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { supabase } from "@/lib/supabase";
@@ -59,11 +58,12 @@ export const useNotificaciones = defineStore("notificaciones", () => {
       const idEmpleado = notif.raw?.empleado?.id_empleado
       const tipoFalta = notif.raw?.faltas?.faltas || ""
 
-      // Solo desconta días si es vacaciones
-      const esVacaciones = tipoFalta === "Vacaciones"
+      // Validación insensible a mayúsculas para "vacaciones"
+      const esVacaciones = tipoFalta.toLowerCase().includes("vacacion")
 
       if (esVacaciones && idEmpleado) {
-        const diasSolicitados = _calcDias(notif.raw?.fecha_inicio, notif.raw?.fecha_fin)
+        // Usamos la nueva función utilitaria de días hábiles
+        const diasSolicitados = _calcDiasHabiles(notif.raw?.fecha_inicio, notif.raw?.fecha_fin)
 
         const { data: saldo } = await supabase
           .from("saldo_vacaciones")
@@ -74,13 +74,13 @@ export const useNotificaciones = defineStore("notificaciones", () => {
         if (saldo) {
           await supabase
             .from("saldo_vacaciones")
-            .update({ dias_consumidos: saldo.dias_consumidos + diasSolicitados })
+            .update({ dias_consumidos: (saldo.dias_consumidos || 0) + diasSolicitados })
             .eq("id_vacaciones", saldo.id_vacaciones)
         }
       }
     }
 
-    // Actualizar en el store
+    // Actualizar el estado directamente en la lista local del store
     const idx = notificaciones.value.findIndex((n) => n.id === notif.id)
     if (idx !== -1) {
       notificaciones.value[idx] = {
@@ -124,10 +124,11 @@ export const useNotificaciones = defineStore("notificaciones", () => {
       .from("solicitudes_ausencia")
       .select(
         `
-      id_ausencia, fecha_inicio, fecha_fin, aprobacion, fecha_solicitud,
-      empleado ( id_empleado, nombres, apellido_paterno, id_departamento,
-        departamento ( nombre_departamento ) )
-    `,
+        id_ausencia, fecha_inicio, fecha_fin, aprobacion, fecha_solicitud, descripcion,
+        faltas ( faltas, goce_sueldo ),
+        empleado ( id_empleado, nombres, apellido_paterno, id_departamento,
+          departamento ( nombre_departamento ) )
+      `,
       )
       .eq("aprobacion", "Pendiente")
       .order("fecha_solicitud", { ascending: false });
@@ -139,13 +140,14 @@ export const useNotificaciones = defineStore("notificaciones", () => {
     const ids = new Set(notificaciones.value.map((n) => n._sourceId));
     (data ?? []).forEach((s) => {
       const n = _solicitudANotif(s);
-      if (!ids.has(n._sourceId)) notificaciones.value.unshift(n);
+      if (!ids.has(n._sourceId)) notificaciones.value.push(n);
     });
   }
 
   function _suscribirRealtime() {
-    const chanAsist = supabase
-      .channel("asistencias-notif")
+    // Unificamos las suscripciones en un canal global para evitar fugas de memoria
+    const canalGlobal = supabase
+      .channel("notificaciones-realtime-all")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "asistencias" },
@@ -176,9 +178,6 @@ export const useNotificaciones = defineStore("notificaciones", () => {
           }
         }
       )
-
-    const chanSolic = supabase
-      .channel("solicitudes-notif")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "solicitudes_ausencia" },
@@ -186,18 +185,19 @@ export const useNotificaciones = defineStore("notificaciones", () => {
           const { data } = await supabase
             .from("solicitudes_ausencia")
             .select(`
-          id_ausencia, fecha_inicio, fecha_fin, aprobacion, fecha_solicitud,
-          empleado ( id_empleado, nombres, apellido_paterno, id_departamento,
-            departamento ( nombre_departamento ) )
-        `)
+              id_ausencia, fecha_inicio, fecha_fin, aprobacion, fecha_solicitud, descripcion,
+              faltas ( faltas, goce_sueldo ),
+              empleado ( id_empleado, nombres, apellido_paterno, id_departamento,
+                departamento ( nombre_departamento ) )
+            `)
             .eq("id_ausencia", row.id_ausencia)
             .single()
           if (data) notificaciones.value.unshift(_solicitudANotif(data))
         },
       )
-      .subscribe()
+      .subscribe() // Encadenado de manera segura al final
 
-    suscripciones = [chanAsist, chanSolic];
+    suscripciones = [canalGlobal];
   }
 
   // ── Mappers ──────────────────────────────────────────────────────────────
@@ -235,11 +235,11 @@ export const useNotificaciones = defineStore("notificaciones", () => {
     };
   }
 
+  // Se agregaron los campos faltantes a la composición de la descripción
   function _solicitudANotif(s) {
     const emp = s.empleado;
     const dept = emp?.departamento?.nombre_departamento ?? "Sin departamento";
-    const dias = _calcDias(s.fecha_inicio, s.fecha_fin);
-
+    const dias = _calcDiasHabiles(s.fecha_inicio, s.fecha_fin);
 
     return {
       id: `notif_${Date.now()}_${Math.random().toString(36).slice(2)}`,
@@ -251,8 +251,8 @@ export const useNotificaciones = defineStore("notificaciones", () => {
       etiqueta: "Solicitud PTO",
       titulo: `${_nombreEmpleado(emp)}: Permiso de Ausencia`,
       descripcion: s.descripcion
-  ? `${s.descripcion} — ${dias} día${dias !== 1 ? 's' : ''}. Fechas: ${_formatFecha(s.fecha_inicio)} – ${_formatFecha(s.fecha_fin)}.`
-  : `Solicita ${dias} día${dias !== 1 ? 's' : ''}. Fechas: ${_formatFecha(s.fecha_inicio)} – ${_formatFecha(s.fecha_fin)}.`,
+        ? `${s.descripcion} — ${dias} día${dias !== 1 ? 's' : ''}. Fechas: ${_formatFecha(s.fecha_inicio)} – ${_formatFecha(s.fecha_fin)}.`
+        : `Solicita ${dias} día${dias !== 1 ? 's' : ''}. Fechas: ${_formatFecha(s.fecha_inicio)} – ${_formatFecha(s.fecha_fin)}.`,
       horaTexto: _formatRelativa(s.fecha_solicitud),
       aprobacion: s.aprobacion ?? "Pendiente",
       raw: s,
@@ -282,20 +282,33 @@ export const useNotificaciones = defineStore("notificaciones", () => {
       month: "short",
     });
   }
-  function _calcDias(a, b) {
+
+  // NUEVA LÓGICA DE NEGOCIO: Cuenta únicamente días laborales (Lunes a Viernes)
+  function _calcDiasHabiles(a, b) {
     if (!a || !b) return 1;
-    return Math.max(1, Math.round((new Date(b) - new Date(a)) / 86400000) + 1);
+    const inicio = new Date(a + "T00:00:00");
+    const fin = new Date(b + "T00:00:00");
+    
+    let diasHabiles = 0;
+    let current = new Date(inicio);
+
+    while (current <= fin) {
+      const dayOfWeek = current.getDay();
+      // 0 = Domingo, 6 = Sábado
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        diasHabiles++;
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    return Math.max(1, diasHabiles);
   }
 
   return {
-    // state
     notificaciones,
     loading,
     error,
-    // getters
     pendientesCount,
     porFiltro,
-    // actions
     inicializar,
     limpiar,
     responderSolicitud,
