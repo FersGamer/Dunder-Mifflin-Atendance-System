@@ -209,10 +209,10 @@
                 <span class="material-symbols-outlined animate-spin text-3xl block mb-2">autorenew</span>
                 Cargando datos...
               </div>
-              <div v-for="dept in departamentos" :key="dept.id"
-                class="border border-outline-variant p-4 rounded hover:bg-surface-container-low transition-colors">
+              <RouterLink v-for="dept in departamentos" :key="dept.id" :to="`/departamentos/${dept.id}`"
+                class="block border border-outline-variant p-4 rounded hover:bg-surface-container-low hover:border-primary transition-all cursor-pointer no-underline group">
                 <div class="flex justify-between items-center mb-2">
-                  <h3 class="font-label-caps text-label-caps text-primary">{{ dept.nombre }}</h3>
+                  <h3 class="font-label-caps text-label-caps text-primary group-hover:underline">{{ dept.nombre }}</h3>
                   <span class="px-2 py-0.5 rounded font-label-caps text-[10px] text-white"
                     :class="dept.puntualidad >= 80 ? 'bg-status-punctual' : dept.puntualidad >= 50 ? 'bg-status-delay' : 'bg-status-absence'">
                     {{ dept.puntualidad }}%
@@ -224,7 +224,7 @@
                     :style="`width: ${dept.puntualidad}%`"></div>
                 </div>
                 <p class="font-body-sm text-body-sm text-on-surface-variant">{{ dept.nota }}</p>
-              </div>
+              </RouterLink>
             </div>
           </div>
         </section>
@@ -246,16 +246,23 @@ import { supabase } from '@/lib/supabase'
 import SideNavBar from '@/components/SideNavBar.vue'
 import BottomNavBar from '@/components/BottomNavBar.vue'
 
-const notificacionesLeidas = ref(false)
 const loading = ref(true)
 const departamentos = ref([])
 const alertas = ref([])
 const stats = ref({ total: 0, puntuales: 0, retrasados: 0, ausentes: 0 })
 const nombreUsuario = ref('Michael')
+const notificacionesLeidas = ref(false)
 
 const debaBrillar = computed(() => {
   return alertas.value.length > 0 && !notificacionesLeidas.value
 })
+
+function marcarComoVistas() {
+  notificacionesLeidas.value = true
+  if (alertas.value.length > 0) {
+    localStorage.setItem('ultima_alerta_leida', alertas.value[0].id)
+  }
+}
 
 const fechaHoy = new Date().toLocaleDateString('es-MX', {
   weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
@@ -287,14 +294,6 @@ const puntualOffset = computed(() => puntualArc.value)
 
 let suscripcion;
 let canalAlertas = null
-
-function marcarComoVistas() {
-  notificacionesLeidas.value = true
-  // Si hay alertas, guardamos el ID de la más reciente como "leída" en el navegador
-  if (alertas.value.length > 0) {
-    localStorage.setItem('ultima_alerta_leida', alertas.value[0].id)
-  }
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatFecha(fecha) {
