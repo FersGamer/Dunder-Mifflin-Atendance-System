@@ -12,19 +12,52 @@
           <h2 class="font-headline-md text-headline-md text-primary">Buenos días, {{ nombreUsuario }}.</h2>
           <p class="font-body-sm text-body-sm text-on-surface-variant capitalize">{{ fechaHoy }}</p>
         </div>
-        <div class="flex items-center gap-4">
-          <div class="relative group cursor-pointer">
-            <span
-              class="material-symbols-outlined text-primary hover:bg-surface-container-high transition-colors p-2 rounded-full">notifications</span>
+        <div class="relative group">
+          <RouterLink to="/notificaciones" @click="marcarComoVistas"
+            class="relative flex items-center justify-center text-primary hover:bg-surface-container-high transition-colors p-2 rounded-full cursor-pointer"
+            :class="{ 'animate-pulse shadow-[0_0_15px_rgba(220,38,38,0.5)] bg-red-50/50': debaBrillar }">
+            <span class="material-symbols-outlined">notifications</span>
+
+            <span v-if="alertas.length > 0"
+              class="absolute top-1 right-1 flex items-center justify-center w-4 h-4 bg-status-absence text-white text-[9px] font-bold rounded-full border-2 border-surface shadow-sm">
+              {{ alertas.length }}
+            </span>
+
+            <span v-if="debaBrillar"
+              class="absolute top-1 right-1 w-4 h-4 bg-status-absence rounded-full animate-ping opacity-75 pointer-events-none">
+            </span>
+          </RouterLink>
+
+          <div
+            class="absolute right-0 mt-2 w-72 bg-surface border border-outline-variant shadow-[2px_2px_0_0_rgba(140,140,140,1)] rounded hidden group-hover:block z-50">
             <div
-              class="absolute right-0 mt-2 w-64 bg-surface border border-outline-variant shadow-[2px_2px_0_0_rgba(140,140,140,1)] rounded hidden group-hover:block z-50">
-              <div class="p-3 border-b border-outline-variant font-label-caps text-label-caps text-primary">
-                Notificaciones Recientes</div>
-              <div class="p-3 border-b border-outline-variant hover:bg-surface-container-low">
-                <p class="font-body-sm text-body-sm">Jim H. ha registrado un retraso (12 min).</p>
-              </div>
-              <div class="p-3 hover:bg-surface-container-low">
-                <p class="font-body-sm text-body-sm">Pam B. solicita material de oficina.</p>
+              class="p-3 border-b border-outline-variant font-label-caps text-label-caps text-primary bg-surface-container-lowest">
+              Notificaciones Recientes
+            </div>
+
+            <div class="max-h-64 overflow-y-auto">
+              <template v-if="alertas.length > 0">
+                <div v-for="alerta in alertas" :key="alerta.id"
+                  class="p-3 border-b border-outline-variant hover:bg-surface-container-low transition-colors">
+                  <div class="flex items-start gap-2">
+                    <span class="material-symbols-outlined text-base mt-0.5"
+                      :class="alerta.color === 'status-delay' ? 'text-status-delay' : 'text-primary'">
+                      {{ alerta.icono }}
+                    </span>
+                    <div>
+                      <p class="font-label-caps text-[10px] uppercase"
+                        :class="alerta.color === 'status-delay' ? 'text-status-delay' : 'text-primary'">
+                        {{ alerta.titulo }}
+                      </p>
+                      <p class="font-body-sm text-body-sm text-on-surface leading-tight mt-1">
+                        {{ alerta.descripcion }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <div v-else class="p-4 text-center">
+                <p class="font-body-sm text-body-sm text-on-surface-variant">No hay notificaciones nuevas.</p>
               </div>
             </div>
           </div>
@@ -101,41 +134,6 @@
               </div>
               <span class="material-symbols-outlined text-status-absence text-3xl">warning</span>
             </div>
-          </div>
-        </section>
-
-        <!-- Alertas del día -->
-        <section v-if="alertas.length > 0"
-          class="bg-surface border border-outline-variant rounded shadow-[2px_2px_0_0_#8C8C8C] relative">
-          <div
-            class="absolute top-0 left-0 bg-status-delay text-on-background font-label-caps text-label-caps px-2 py-1 border-r border-b border-outline-variant rounded-br">
-            ALERTAS HOY
-          </div>
-          <div class="mt-6 divide-y divide-outline-variant">
-            <div v-for="alerta in alertas" :key="alerta.id"
-              class="flex items-center gap-4 px-6 py-3 hover:bg-surface-container-low transition-colors">
-              <div
-                class="w-8 h-8 rounded-full overflow-hidden bg-surface-variant flex items-center justify-center shrink-0">
-                <img v-if="alerta.foto" :src="alerta.foto" class="w-full h-full object-cover grayscale" />
-                <span v-else class="material-symbols-outlined text-sm text-outline">person</span>
-              </div>
-              <div class="flex-1">
-                <p class="font-label-caps text-label-caps"
-                  :class="alerta.color === 'status-delay' ? 'text-status-delay' : 'text-primary'">
-                  {{ alerta.titulo }}
-                </p>
-                <p class="font-body-sm text-body-sm text-on-surface-variant">{{ alerta.descripcion }}</p>
-              </div>
-              <span class="material-symbols-outlined text-sm"
-                :class="alerta.color === 'status-delay' ? 'text-status-delay' : 'text-primary'">
-                {{ alerta.icono }}
-              </span>
-            </div>
-          </div>
-          <div class="px-6 py-3 border-t border-outline-variant text-right">
-            <RouterLink to="/notificaciones" class="font-label-caps text-label-caps text-primary hover:underline">
-              Ver todas las notificaciones →
-            </RouterLink>
           </div>
         </section>
 
@@ -248,11 +246,16 @@ import { supabase } from '@/lib/supabase'
 import SideNavBar from '@/components/SideNavBar.vue'
 import BottomNavBar from '@/components/BottomNavBar.vue'
 
-const loading       = ref(true)
+const notificacionesLeidas = ref(false)
+const loading = ref(true)
 const departamentos = ref([])
-const alertas       = ref([])
-const stats         = ref({ total: 0, puntuales: 0, retrasados: 0, ausentes: 0 })
+const alertas = ref([])
+const stats = ref({ total: 0, puntuales: 0, retrasados: 0, ausentes: 0 })
 const nombreUsuario = ref('Michael')
+
+const debaBrillar = computed(() => {
+  return alertas.value.length > 0 && !notificacionesLeidas.value
+})
 
 const fechaHoy = new Date().toLocaleDateString('es-MX', {
   weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
@@ -283,6 +286,15 @@ const retrasadosArc = computed(() => {
 const puntualOffset = computed(() => puntualArc.value)
 
 let suscripcion;
+let canalAlertas = null
+
+function marcarComoVistas() {
+  notificacionesLeidas.value = true
+  // Si hay alertas, guardamos el ID de la más reciente como "leída" en el navegador
+  if (alertas.value.length > 0) {
+    localStorage.setItem('ultima_alerta_leida', alertas.value[0].id)
+  }
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatFecha(fecha) {
@@ -296,21 +308,33 @@ function formatFecha(fecha) {
 onMounted(async () => {
   await Promise.all([cargarDatos(), cargarAlertas()])
 
-  // Realtime
-  supabase
-    .channel('dashboard-alertas')
+  // 3. Destruir cualquier conexión residual previa (vital para Vite/HMR)
+  if (canalAlertas) {
+    await supabase.removeChannel(canalAlertas)
+  }
+
+  // 4. Crear el canal
+  canalAlertas = supabase.channel('dashboard-alertas')
+
+  // 5. Encadenar todos los .on() PRIMERO
+  canalAlertas
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'asistencias' }, () => {
+      notificacionesLeidas.value = false
       cargarDatos()
       cargarAlertas()
     })
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'solicitudes_ausencia' }, () => {
       cargarAlertas()
     })
-    .subscribe()
+
+  // 6. Ejecutar el .subscribe() AL FINAL de la cadena
+  canalAlertas.subscribe()
 })
 
 onUnmounted(() => {
-  if (suscripcion) supabase.removeChannel(suscripcion)
+  if (canalAlertas) {
+    supabase.removeChannel(canalAlertas)
+  }
 })
 
 async function cargarDatos() {
@@ -331,14 +355,14 @@ async function cargarDatos() {
     .eq('fecha', hoy)
 
   if (asistencias) {
-    const puntuales  = asistencias.filter(a => a.estado === 'activo').length
+    const puntuales = asistencias.filter(a => a.estado === 'activo').length
     const retrasados = asistencias.filter(a => a.estado === 'leve_retraso').length
-    const faltas     = asistencias.filter(a => a.estado === 'falta').length
+    const faltas = asistencias.filter(a => a.estado === 'falta').length
     // Ausentes = faltas explícitas + los que no tienen registro aún
     const sinRegistro = (totalEmpleados ?? 0) - asistencias.length
-    stats.value.puntuales  = puntuales
+    stats.value.puntuales = puntuales
     stats.value.retrasados = retrasados
-    stats.value.ausentes   = faltas + Math.max(0, sinRegistro)
+    stats.value.ausentes = faltas + Math.max(0, sinRegistro)
   }
 
   // Departamentos con porcentaje sobre total real de empleados
@@ -354,8 +378,8 @@ async function cargarDatos() {
 
   if (depts) {
     departamentos.value = depts.map(dept => {
-      const empleados  = dept.empleado || []
-      const totalDept  = empleados.length  // total real del depto
+      const empleados = dept.empleado || []
+      const totalDept = empleados.length  // total real del depto
 
       const asistenciasHoy = empleados.flatMap(emp =>
         (emp.asistencias ?? []).filter(a => a.fecha === hoy)
@@ -376,7 +400,7 @@ async function cargarDatos() {
       const ausentes = empleados
         .filter(emp => {
           const tieneRegistro = (emp.asistencias ?? []).some(a => a.fecha === hoy)
-          const tieneFalta    = (emp.asistencias ?? []).some(a => a.fecha === hoy && a.estado === 'falta')
+          const tieneFalta = (emp.asistencias ?? []).some(a => a.fecha === hoy && a.estado === 'falta')
           return !tieneRegistro || tieneFalta
         })
         .map(e => `${e.nombres} ${e.apellido_paterno}`)
@@ -403,16 +427,25 @@ async function cargarDatos() {
 async function cargarAlertas() {
   const hoy = new Date().toLocaleDateString('en-CA');
 
-  const { data: incidencias, error: error } = await supabase
-  .from('asistencias')
+  const { data: incidencias, error } = await supabase
+    .from('asistencias')
     .select(`
-      id_asistencias, estatus, hora_entrada, hora_salida,
-      empleado ( nombres, apellido_paterno, foto_url )
-    `)
+    id_asistencias, 
+    estado, 
+    estatus, 
+    hora_entrada, 
+    hora_salida,
+    empleado ( nombres, apellido_paterno, foto_url )
+  `)
     .eq('fecha', hoy)
-    .in('estado', ['Retraso', 'Retraso Mayor', 'Salida Anticipada'])
+    // Aquí ocurre la magia: Busca problemas en la entrada OR problemas en la salida
+    .or('estado.in.(leve_retraso),estatus.in.(Salida Anticipada)')
     .order('id_asistencias', { ascending: false })
-    .limit(5)
+    .limit(5);
+
+  if (error) {
+    console.error("Error al cargar incidencias:", error.message);
+  }
 
   const { data: solicitudes } = await supabase
     .from('solicitudes_ausencia')
@@ -431,34 +464,49 @@ async function cargarAlertas() {
     return
   } else if (incidencias) {
     incidencias.forEach(a => {
-      const emp    = a.empleado
+      const emp = a.empleado
       const nombre = emp ? `${emp.nombres} ${emp.apellido_paterno}` : 'Empleado'
       lista.push({
-        id:          `asist_${a.id_asistencias}`,
-        icono:       a.estatus?.includes('Salida') ? 'logout' : 'schedule',
-        color:       'status-delay',
-        titulo:      a.estatus === 'Salida Anticipada' ? 'Salida anticipada' : 'Entrada tardía',
+        id: `asist_${a.id_asistencias}`,
+        icono: a.estatus?.includes('Salida') ? 'logout' : 'schedule',
+        color: 'status-delay',
+        titulo: a.estatus === 'Salida Anticipada' ? 'Salida anticipada' : 'Entrada tardía',
         descripcion: `${nombre} — ${a.hora_entrada || a.hora_salida || ''}`,
-        foto:        emp?.foto_url || null
+        foto: emp?.foto_url || null
       })
     })
   }
 
   if (solicitudes) {
     solicitudes.forEach(s => {
-      const emp    = s.empleado
+      const emp = s.empleado
       const nombre = emp ? `${emp.nombres} ${emp.apellido_paterno}` : 'Empleado'
       lista.push({
-        id:          `solic_${s.id_ausencia}`,
-        icono:       'event_note',
-        color:       'primary',
-        titulo:      'Solicitud de permiso',
+        id: `solic_${s.id_ausencia}`,
+        icono: 'event_note',
+        color: 'primary',
+        titulo: 'Solicitud de permiso',
         descripcion: `${nombre} — ${formatFecha(s.fecha_inicio)}`,
-        foto:        null
+        foto: null
       })
     })
   }
 
   alertas.value = lista
+
+  // NUEVA LÓGICA DE CONTROL DE BRILLO:
+  if (lista.length > 0) {
+    const idMasReciente = lista[0].id
+    const ultimoIdLeido = localStorage.getItem('ultima_alerta_leida')
+
+    // Si el ID más reciente coincide con el guardado, significa que ya vio estas alertas
+    if (idMasReciente === ultimoIdLeido) {
+      notificacionesLeidas.value = true
+    } else {
+      notificacionesLeidas.value = false
+    }
+  } else {
+    notificacionesLeidas.value = true
+  }
 }
 </script>
