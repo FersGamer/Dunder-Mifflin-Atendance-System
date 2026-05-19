@@ -231,7 +231,7 @@ onMounted(async () => {
   // Configuración de la Cámara
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" },
+      video: { facingMode: "user" },
     });
     videoEl.value.srcObject = stream;
     videoEl.value.play();
