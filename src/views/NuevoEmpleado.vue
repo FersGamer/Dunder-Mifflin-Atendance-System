@@ -54,12 +54,12 @@
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="flex flex-col">
                   <label class="font-label-caps text-label-caps text-on-surface-variant mb-2 uppercase">Nombre(s) *</label>
-                  <input v-model="form.nombres" type="text" placeholder="Ej. Dwight Kurt"
+                  <input v-model="form.nombres" @input="validarLetras('nombres')" type="text" placeholder="Ej. Dwight Kurt"
                     class="bg-surface border-0 border-b-2 border-outline-variant focus:ring-0 focus:border-primary px-0 py-2 font-body-md text-body-md text-on-surface"/>
                 </div>
                 <div class="flex flex-col">
                   <label class="font-label-caps text-label-caps text-on-surface-variant mb-2 uppercase">Apellido Paterno *</label>
-                  <input v-model="form.apellido_paterno" type="text" placeholder="Ej. Schrute"
+                  <input v-model="form.apellido_paterno" @input="validarLetras('apellido_paterno')" type="text" placeholder="Ej. Schrute"
                     class="bg-surface border-0 border-b-2 border-outline-variant focus:ring-0 focus:border-primary px-0 py-2 font-body-md text-body-md text-on-surface"/>
                 </div>
                 <div class="flex flex-col">
@@ -353,6 +353,13 @@ onMounted(async () => {
   const { data } = await supabase.from('departamento').select('id_departamento, nombre_departamento')
   if (data) departamentos.value = data
 })
+
+//Validador de texto (Filtra números y caracteres no alfabéticos en tiempo real)
+function validarLetras(campo) {
+  // Regex: Permite letras de la A-Z, mayúsculas, minúsculas, espacios y caracteres acentuados (incluyendo ñ y diéresis)
+  const regexInvalido = /[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g;
+  form.value[campo] = form.value[campo].replace(regexInvalido, '');
+}
 
 function asignarSueldo() {
   const nombre = departamentoSeleccionado.value
