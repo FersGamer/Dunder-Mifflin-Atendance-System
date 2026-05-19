@@ -219,7 +219,7 @@ onMounted(async () => {
 });
 
 async function cargarRegistrosHoy() {
-  const hoy = new Date().toISOString().split("T")[0];
+  const hoy = new Date().toLocaleDateString('en-CA');
 
   const { data } = await supabase
     .from("asistencias")
@@ -313,7 +313,7 @@ async function procesarQR(contenido) {
   const nombre = `${emp.nombres} ${emp.apellido_paterno}`
   const ahora = new Date()
   const horaStr = ahora.toTimeString().split(' ')[0]
-  const fechaStr = ahora.toISOString().split('T')[0]
+  const fechaStr = ahora.toLocaleDateString('en-CA')
   const horario = emp.horario?.[0]
 
   if (tipoQR === 'entrada') {

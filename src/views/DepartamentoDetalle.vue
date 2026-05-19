@@ -215,7 +215,7 @@ const empleadosFiltrados = computed(() => {
 
 onMounted(async () => {
   const id = route.params.id
-  const hoy = new Date().toISOString().split('T')[0]
+  const hoy = new Date().toLocaleDateString('en-CA');
 
   // Cargar departamento
   const { data: deptData } = await supabase

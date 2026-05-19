@@ -243,7 +243,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { supabase } from '@/lib/supabase'
 import SideNavBar from '@/components/SideNavBar.vue'
 import BottomNavBar from '@/components/BottomNavBar.vue'
@@ -282,6 +282,8 @@ const retrasadosArc = computed(() => {
 
 const puntualOffset = computed(() => puntualArc.value)
 
+let suscripcion;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatFecha(fecha) {
   if (!fecha) return '—'
@@ -307,9 +309,13 @@ onMounted(async () => {
     .subscribe()
 })
 
+onUnmounted(() => {
+  if (suscripcion) supabase.removeChannel(suscripcion)
+})
+
 async function cargarDatos() {
   loading.value = true
-  const hoy = new Date().toISOString().split('T')[0]
+  const hoy = new Date().toLocaleDateString('en-CA');
 
   // Total empleados de la empresa
   const { count: totalEmpleados } = await supabase
@@ -395,16 +401,16 @@ async function cargarDatos() {
 }
 
 async function cargarAlertas() {
-  const hoy = new Date().toISOString().split('T')[0]
+  const hoy = new Date().toLocaleDateString('en-CA');
 
-  const { data: incidencias } = await supabase
-    .from('asistencias')
+  const { data: incidencias, error: error } = await supabase
+  .from('asistencias')
     .select(`
       id_asistencias, estatus, hora_entrada, hora_salida,
       empleado ( nombres, apellido_paterno, foto_url )
     `)
     .eq('fecha', hoy)
-    .in('estatus', ['Retraso', 'Retraso Mayor', 'Salida Anticipada'])
+    .in('estado', ['Retraso', 'Retraso Mayor', 'Salida Anticipada'])
     .order('id_asistencias', { ascending: false })
     .limit(5)
 
@@ -420,7 +426,10 @@ async function cargarAlertas() {
 
   const lista = []
 
-  if (incidencias) {
+  if (error) {
+    console.error('Error al cargar incidencias:', error)
+    return
+  } else if (incidencias) {
     incidencias.forEach(a => {
       const emp    = a.empleado
       const nombre = emp ? `${emp.nombres} ${emp.apellido_paterno}` : 'Empleado'

@@ -128,7 +128,7 @@ const departamentosFiltrados = computed(() => {
 })
 
 onMounted(async () => {
-  const hoy = new Date().toISOString().split('T')[0]
+  const hoy = new Date().toLocaleDateString('en-CA');
 
   const { data: depts } = await supabase
     .from('departamento')
