@@ -16,8 +16,27 @@
         <div>
           <label class="block font-label-caps text-label-caps text-on-surface mb-2 uppercase" for="password">Contraseña</label>
           <div class="relative">
-            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">lock</span>
-            <input v-model="password" class="w-full pl-10 pr-4 py-3 bg-surface-bright border-b-2 border-outline focus:border-primary focus:ring-0 font-body-md text-body-md text-on-surface placeholder-outline-variant transition-colors" id="password" placeholder="••••••••" type="password"/>
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none">lock</span>
+            
+            <input 
+              v-model="password" 
+              :type="mostrarPassword ? 'text' : 'password'" 
+              @keyup.enter="handleLogin"
+              class="w-full pl-10 pr-12 py-3 bg-surface-bright border-b-2 border-outline focus:border-primary focus:ring-0 font-body-md text-body-md text-on-surface placeholder-outline-variant transition-colors" 
+              id="password" 
+              placeholder="••••••••" 
+            />
+            
+            <button 
+              type="button" 
+              @click="mostrarPassword = !mostrarPassword" 
+              tabindex="-1"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors focus:outline-none"
+            >
+              <span class="material-symbols-outlined">
+                {{ mostrarPassword ? 'visibility_off' : 'visibility' }}
+              </span>
+            </button>
           </div>
         </div>
         <div v-if="errorMsg" class="bg-error-container text-on-error-container p-3 rounded flex items-start gap-2 border border-error">
@@ -46,6 +65,7 @@ import { supabase } from '../lib/supabase'
 const router = useRouter()
 const email = ref('')
 const password = ref('')
+const mostrarPassword = ref(false)
 const loading = ref(false)
 const errorMsg = ref('')
 
