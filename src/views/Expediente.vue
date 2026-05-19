@@ -26,51 +26,38 @@
 
       <div v-else class="p-8 max-w-5xl mx-auto">
 
-        <!-- Stepper -->
         <div class="mb-8 bg-surface border border-outline-variant p-4 pb-12 rounded shadow-[2px_2px_0_0_#8C8C8C] relative">
-          <!-- Etiqueta superior -->
           <div class="absolute top-0 left-0 bg-secondary-fixed px-3 py-1 border-r border-b border-outline-variant font-label-caps text-label-caps text-on-secondary-fixed rounded-br z-10">
             FORMULARIO RH-07
           </div>
 
-          <!-- Contenedor Flex -->
           <div class="flex items-center w-full mt-10 px-4 md:px-8">
             <template v-for="(paso, i) in pasos" :key="i">
-              
-              <!-- Círculo y Etiqueta del paso -->
               <div class="relative flex flex-col items-center">
                 <div class="w-8 h-8 rounded-full flex items-center justify-center font-label-caps text-label-caps shadow-[2px_2px_0_0_#8C8C8C] z-10 transition-colors duration-300"
                   :class="pasoActual > i + 1 ? 'bg-status-punctual text-on-primary' : pasoActual === i + 1 ? 'bg-primary text-on-primary' : 'bg-surface border border-outline-variant text-on-surface-variant'">
                   <span v-if="pasoActual > i + 1" class="material-symbols-outlined text-sm">check</span>
                   <span v-else>{{ i + 1 }}</span>
                 </div>
-                
-                <!-- El texto tiene posición absoluta para no empujar la línea hacia abajo -->
                 <div class="absolute top-10 w-28 text-center font-label-caps text-label-caps leading-tight"
                   :class="pasoActual === i + 1 ? 'text-primary' : 'text-on-surface-variant'">
                   {{ paso }}
                 </div>
               </div>
-
-              <!-- Línea conectora (se omite después del último paso) -->
               <div v-if="i < pasos.length - 1" class="flex-auto h-0.5 mx-2 transition-colors duration-300"
                 :class="pasoActual > i + 1 ? 'bg-status-punctual' : 'bg-outline-variant'">
               </div>
-              
             </template>
           </div>
         </div>
 
-
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-          <!-- Formulario -->
           <div class="lg:col-span-2 bg-surface border border-outline-variant p-8 shadow-[2px_2px_0_0_#8C8C8C] relative">
             <div class="absolute top-0 left-0 bg-secondary-fixed px-3 py-1 border-r border-b border-outline-variant font-label-caps text-label-caps text-on-secondary-fixed">
               SECCIÓN {{ pasoActual }}
             </div>
 
-            <!-- Paso 1: Datos Personales -->
             <div v-if="pasoActual === 1" class="mt-6 space-y-6">
               <div class="flex justify-between items-center">
                 <h3 class="font-headline-lg text-headline-lg text-primary">Datos Personales</h3>
@@ -81,17 +68,17 @@
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="flex flex-col">
                   <label class="font-label-caps text-label-caps text-on-surface-variant mb-2 uppercase">Nombre(s)</label>
-                  <input v-model="form.nombres" type="text"
+                  <input v-model="form.nombres" @input="validarLetras('nombres')" type="text"
                     class="bg-surface border-0 border-b-2 border-outline-variant focus:ring-0 focus:border-primary px-0 py-2 font-body-md text-body-md text-on-surface"/>
                 </div>
                 <div class="flex flex-col">
                   <label class="font-label-caps text-label-caps text-on-surface-variant mb-2 uppercase">Apellido Paterno</label>
-                  <input v-model="form.apellido_paterno" type="text"
+                  <input v-model="form.apellido_paterno" @input="validarLetras('apellido_paterno')" type="text"
                     class="bg-surface border-0 border-b-2 border-outline-variant focus:ring-0 focus:border-primary px-0 py-2 font-body-md text-body-md text-on-surface"/>
                 </div>
                 <div class="flex flex-col">
                   <label class="font-label-caps text-label-caps text-on-surface-variant mb-2 uppercase">Apellido Materno</label>
-                  <input v-model="form.apellido_materno" type="text"
+                  <input v-model="form.apellido_materno" @input="validarLetras('apellido_materno')" type="text"
                     class="bg-surface border-0 border-b-2 border-outline-variant focus:ring-0 focus:border-primary px-0 py-2 font-body-md text-body-md text-on-surface"/>
                 </div>
                 <div class="flex flex-col">
@@ -102,32 +89,50 @@
               </div>
             </div>
 
-            <!-- Paso 2: Datos Laborales -->
-            <div v-if="pasoActual === 2" class="mt-6 space-y-6">
-              <h3 class="font-headline-lg text-headline-lg text-primary">Datos Laborales</h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="flex flex-col">
-                  <label class="font-label-caps text-label-caps text-on-surface-variant mb-2 uppercase">Departamento</label>
-                  <select v-model="form.id_departamento"
-                    class="bg-surface border-0 border-b-2 border-outline-variant focus:ring-0 focus:border-primary px-0 py-2 font-body-md text-body-md text-on-surface">
-                    <option v-for="dept in departamentos" :key="dept.id_departamento" :value="dept.id_departamento">
-                      {{ dept.nombre_departamento }}
-                    </option>
-                  </select>
-                </div>
-                <div class="flex flex-col">
-                  <label class="font-label-caps text-label-caps text-on-surface-variant mb-2 uppercase">Sueldo (MXN)</label>
-                  <input v-model="form.sueldo" type="number"
-                    class="bg-surface border-0 border-b-2 border-outline-variant focus:ring-0 focus:border-primary px-0 py-2 font-body-md text-body-md text-on-surface"/>
-                </div>
-                <div class="flex flex-col">
-                  <label class="font-label-caps text-label-caps text-on-surface-variant mb-2 uppercase">Fecha de Contratación</label>
-                  <input v-model="form.fecha_contratacion" type="date"
-                    class="bg-surface border-0 border-b-2 border-outline-variant focus:ring-0 focus:border-primary px-0 py-2 font-body-md text-body-md text-on-surface"/>
+            <div v-if="pasoActual === 2" class="mt-6 space-y-8">
+              <div>
+                <h3 class="font-headline-lg text-headline-lg text-primary mb-4">Datos Laborales</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div class="flex flex-col">
+                    <label class="font-label-caps text-label-caps text-on-surface-variant mb-2 uppercase">Departamento</label>
+                    <select v-model="form.id_departamento"
+                      class="bg-surface border-0 border-b-2 border-outline-variant focus:ring-0 focus:border-primary px-0 py-2 font-body-md text-body-md text-on-surface">
+                      <option v-for="dept in departamentos" :key="dept.id_departamento" :value="dept.id_departamento">
+                        {{ dept.nombre_departamento }}
+                      </option>
+                    </select>
+                  </div>
+                  <div class="flex flex-col">
+                    <label class="font-label-caps text-label-caps text-on-surface-variant mb-2 uppercase">Sueldo (MXN)</label>
+                    <input v-model="form.sueldo" type="number"
+                      class="bg-surface border-0 border-b-2 border-outline-variant focus:ring-0 focus:border-primary px-0 py-2 font-body-md text-body-md text-on-surface"/>
+                  </div>
+                  <div class="flex flex-col">
+                    <label class="font-label-caps text-label-caps text-on-surface-variant mb-2 uppercase">Fecha de Contratación</label>
+                    <input v-model="form.fecha_contratacion" type="date"
+                      class="bg-surface border-0 border-b-2 border-outline-variant focus:ring-0 focus:border-primary px-0 py-2 font-body-md text-body-md text-on-surface"/>
+                  </div>
                 </div>
               </div>
 
-              <!-- Horario -->
+              <div class="border border-outline-variant rounded p-4 relative">
+                <div class="absolute top-0 left-0 bg-blue-100 font-label-caps text-label-caps px-2 py-1 border-r border-b border-outline-variant rounded-br text-blue-800">
+                  SALDO DE VACACIONES
+                </div>
+                <div class="mt-6 grid grid-cols-2 gap-6">
+                  <div class="flex flex-col">
+                    <label class="font-label-caps text-label-caps text-on-surface-variant mb-2">DÍAS OTORGADOS</label>
+                    <input v-model="form.dias_otorgados" type="number" min="0"
+                      class="bg-surface border-0 border-b-2 border-outline-variant focus:ring-0 focus:border-primary px-0 py-2 font-body-md text-body-md text-on-surface"/>
+                  </div>
+                  <div class="flex flex-col">
+                    <label class="font-label-caps text-label-caps text-on-surface-variant mb-2">DÍAS CONSUMIDOS</label>
+                    <input v-model="form.dias_consumidos" type="number" min="0"
+                      class="bg-surface border-0 border-b-2 border-outline-variant focus:ring-0 focus:border-primary px-0 py-2 font-body-md text-body-md text-on-surface"/>
+                  </div>
+                </div>
+              </div>
+
               <div class="border border-outline-variant rounded p-4 relative">
                 <div class="absolute top-0 left-0 bg-surface-container-highest font-label-caps text-label-caps px-2 py-1 border-r border-b border-outline-variant rounded-br text-on-surface-variant">
                   HORARIO LABORAL
@@ -149,11 +154,31 @@
                   </div>
                 </div>
               </div>
+
+              <div class="border border-outline-variant rounded p-4 relative bg-error/5">
+                <div class="absolute top-0 left-0 bg-error text-on-error font-label-caps text-label-caps px-2 py-1 border-r border-b border-error rounded-br">
+                  CONTROL DE SEGURIDAD
+                </div>
+                <div class="mt-6 flex items-center justify-between">
+                  <div>
+                    <p class="font-label-caps text-label-caps text-on-surface">Forzar Reinicio de Contraseña</p>
+                    <p class="text-label-caps text-on-surface-variant mt-1">Si se activa, el empleado será obligado a crear una nueva clave en su próximo inicio de sesión.</p>
+                  </div>
+                  
+                  <button @click="form.reiniciar_password = !form.reiniciar_password"
+                    class="w-12 h-6 rounded-full relative transition-colors duration-300 focus:outline-none shadow-inner"
+                    :class="form.reiniciar_password ? 'bg-error' : 'bg-outline-variant'">
+                    <span class="absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 shadow"
+                      :class="form.reiniciar_password ? 'translate-x-6' : 'translate-x-0'"></span>
+                  </button>
+                </div>
+              </div>
+
             </div>
 
-            <!-- Paso 3: Confirmación -->
             <div v-if="pasoActual === 3" class="mt-6 space-y-4">
               <h3 class="font-headline-lg text-headline-lg text-primary">Confirmar Cambios</h3>
+              
               <div class="bg-surface-container-low border border-outline-variant p-4 rounded space-y-2">
                 <p class="font-label-caps text-label-caps text-on-surface-variant uppercase mb-3">Datos Personales</p>
                 <div class="grid grid-cols-2 gap-2 font-body-sm text-body-sm">
@@ -163,17 +188,23 @@
                   <span class="font-memo-mono">{{ form.email }}</span>
                 </div>
               </div>
+
               <div class="bg-surface-container-low border border-outline-variant p-4 rounded space-y-2">
-                <p class="font-label-caps text-label-caps text-on-surface-variant uppercase mb-3">Datos Laborales</p>
+                <p class="font-label-caps text-label-caps text-on-surface-variant uppercase mb-3">Datos Laborales y Accesos</p>
                 <div class="grid grid-cols-2 gap-2 font-body-sm text-body-sm">
                   <span class="text-on-surface-variant">Departamento</span>
                   <span class="font-bold">{{ departamentoSeleccionado }}</span>
                   <span class="text-on-surface-variant">Sueldo</span>
                   <span>${{ Number(form.sueldo).toLocaleString() }} MXN</span>
+                  <span class="text-on-surface-variant">Saldo Vacaciones</span>
+                  <span>{{ form.dias_otorgados }} otorgados / {{ form.dias_consumidos }} consumidos</span>
                   <span class="text-on-surface-variant">Turno</span>
                   <span>{{ form.turno }}</span>
+                  <span class="text-error font-bold" v-if="form.reiniciar_password">Seguridad</span>
+                  <span class="text-error font-bold" v-if="form.reiniciar_password">Reinicio de contraseña activado</span>
                 </div>
               </div>
+
               <div v-if="exitoMsg" class="bg-status-punctual/10 text-status-punctual p-3 rounded flex items-center gap-2 border border-status-punctual/30">
                 <span class="material-symbols-outlined">check_circle</span>
                 <p class="font-body-sm text-body-sm">{{ exitoMsg }}</p>
@@ -184,7 +215,6 @@
               </div>
             </div>
 
-            <!-- Navegación -->
             <div class="mt-8 flex justify-between items-center border-t border-outline-variant pt-6">
               <div class="flex gap-3">
                 <button @click="pasoAnterior" :disabled="pasoActual === 1"
@@ -210,7 +240,6 @@
             </div>
           </div>
 
-          <!-- Vista previa gafete -->
           <div class="lg:col-span-1">
             <div class="bg-surface-container-low border border-outline-variant p-6 shadow-[2px_2px_0_0_#8C8C8C] sticky top-24">
               <div class="flex items-center gap-2 mb-4 pb-3 border-b border-outline-variant">
@@ -272,11 +301,15 @@ const errorMsg = ref('')
 const departamentos = ref([])
 const empleado = ref(null)
 const idHorario = ref(null)
+const idVacaciones = ref(null) // Nuevo ref para guardar el ID de la tabla saldo_vacaciones
 
 const form = ref({
   nombres: '', apellido_paterno: '', apellido_materno: '',
   email: '', id_departamento: null, sueldo: 0,
-  fecha_contratacion: '', turno: '', hora_entrada: '', hora_salida: ''
+  fecha_contratacion: '', turno: '', hora_entrada: '', hora_salida: '',
+  // Nuevos campos
+  dias_otorgados: 0, dias_consumidos: 0,
+  reiniciar_password: false
 })
 
 const turnos = [
@@ -293,19 +326,27 @@ const departamentoSeleccionado = computed(() => {
 onMounted(async () => {
   const id = route.params.id
 
-  const [{ data: emp }, { data: depts }] = await Promise.all([
+  // Se agregó la petición de saldo_vacaciones al Promise.all
+  const [{ data: emp }, { data: depts }, { data: saldo }] = await Promise.all([
     supabase.from('empleado').select(`
       id_empleado, nombres, apellido_paterno, apellido_materno,
       email, fecha_contratacion, sueldo, foto_url, id_departamento,
       horario ( id_horario, turno, hora_entrada, hora_salida )
     `).eq('id_empleado', id).single(),
-    supabase.from('departamento').select('id_departamento, nombre_departamento')
+    supabase.from('departamento').select('id_departamento, nombre_departamento'),
+    supabase.from('saldo_vacaciones').select('*').eq('id_empleado', id).single()
   ])
 
   if (emp) {
     empleado.value = emp
     const hor = emp.horario?.[0]
     idHorario.value = hor?.id_horario || null
+    
+    // Asignar los datos del saldo si existen
+    if (saldo) {
+      idVacaciones.value = saldo.id_vacaciones
+    }
+
     form.value = {
       nombres: emp.nombres,
       apellido_paterno: emp.apellido_paterno,
@@ -317,11 +358,21 @@ onMounted(async () => {
       turno: hor?.turno || '',
       hora_entrada: hor?.hora_entrada || '',
       hora_salida: hor?.hora_salida || '',
+      dias_otorgados: saldo?.dias_otorgados || 0,
+      dias_consumidos: saldo?.dias_consumidos || 0,
+      reiniciar_password: false // Valor por defecto
     }
   }
   if (depts) departamentos.value = depts
   loading.value = false
 })
+
+// NUEVA FUNCIÓN: Validador de texto (Filtra números y caracteres no alfabéticos en tiempo real)
+function validarLetras(campo) {
+  // Regex: Permite letras de la A-Z, mayúsculas, minúsculas, espacios y caracteres acentuados (incluyendo ñ y diéresis)
+  const regexInvalido = /[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g;
+  form.value[campo] = form.value[campo].replace(regexInvalido, '');
+}
 
 function seleccionarTurno(turno) {
   form.value.turno = turno.nombre
@@ -339,7 +390,7 @@ async function guardarCambios() {
   exitoMsg.value = ''
 
   try {
-    // Actualizar empleado
+    // 1. Actualizar empleado
     const { error: empError } = await supabase
       .from('empleado')
       .update({
@@ -352,17 +403,33 @@ async function guardarCambios() {
       })
       .eq('id_empleado', route.params.id)
 
-    console.log('Error empleado:', empError)
-
     if (empError) throw new Error('Error al actualizar empleado: ' + empError.message)
 
-    // Actualizar horario
+    // 2. Actualizar horario
     if (idHorario.value) {
       await supabase.from('horario').update({
         turno: form.value.turno,
         hora_entrada: form.value.hora_entrada,
         hora_salida: form.value.hora_salida,
       }).eq('id_horario', idHorario.value)
+    }
+
+    // 3. NUEVO: Actualizar saldo de vacaciones
+    if (idVacaciones.value) {
+      await supabase.from('saldo_vacaciones').update({
+        dias_otorgados: parseInt(form.value.dias_otorgados),
+        dias_consumidos: parseInt(form.value.dias_consumidos)
+      }).eq('id_vacaciones', idVacaciones.value)
+    }
+
+    // 4. NUEVO: Actualizar seguridad (cuenta)
+    // Asumo que tu tabla de acceso se llama "cuenta" y el campo "primer_inicio_sesion"
+    if (form.value.reiniciar_password) {
+      const { error: errorCuenta } = await supabase.from('cuenta').update({
+        primer_inicio_sesion: true
+      }).eq('id_empleado', route.params.id)
+      
+      if (errorCuenta) throw new Error('Error al forzar reinicio de clave: ' + errorCuenta.message)
     }
 
     exitoMsg.value = 'Expediente actualizado correctamente.'
