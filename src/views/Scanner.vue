@@ -1,11 +1,14 @@
 <template>
   <div class="bg-surface text-on-surface h-screen flex flex-col md:flex-row overflow-hidden font-body-md">
+    <!-- Header móvil -->
     <header
       class="flex justify-between items-center w-full px-8 h-16 bg-surface border-b border-outline-variant md:hidden">
-      <span class="font-headline-md text-headline-md text-primary uppercase tracking-tighter">Dunder Mifflin Paper Co.</span>
+      <span class="font-headline-md text-headline-md text-primary uppercase tracking-tighter">Dunder Mifflin Paper
+        Co.</span>
     </header>
 
     <main class="flex-1 flex flex-col md:flex-row w-full overflow-hidden">
+      <!-- Panel izquierdo: Escáner -->
       <section
         class="flex-1 bg-surface-dim relative flex flex-col border-b md:border-b-0 md:border-r border-outline-variant p-6">
         <div class="flex justify-between items-center mb-4">
@@ -21,12 +24,14 @@
           </div>
         </div>
 
+        <!-- Visor de cámara -->
         <div
           class="flex-1 relative bg-ink-black rounded-lg overflow-hidden border border-outline shadow-[2px_2px_0_0_#8C8C8C]">
           <video ref="videoEl" class="absolute inset-0 w-full h-full object-cover opacity-80 grayscale" autoplay muted
             playsinline></video>
           <canvas ref="canvasEl" class="hidden"></canvas>
 
+          <!-- Retícula -->
           <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div
               class="w-64 h-64 border-2 border-primary-fixed border-dashed flex flex-col items-center justify-center relative">
@@ -41,14 +46,15 @@
             </div>
           </div>
 
+          <!-- Feedback del escaneo -->
           <transition name="fade">
             <div v-if="feedback"
               class="absolute bottom-4 left-4 right-4 p-4 rounded border flex items-start gap-3 shadow-[2px_2px_0_0_#8C8C8C]"
               :class="feedback.tipo === 'exito'
-                ? 'bg-status-punctual/10 border-status-punctual text-status-punctual'
-                : feedback.tipo === 'retraso'
-                  ? 'bg-status-delay/10 border-status-delay text-status-delay'
-                  : 'bg-error-container border-error text-on-error-container'
+                  ? 'bg-status-punctual/10 border-status-punctual text-status-punctual'
+                  : feedback.tipo === 'retraso'
+                    ? 'bg-status-delay/10 border-status-delay text-status-delay'
+                    : 'bg-error-container border-error text-on-error-container'
                 ">
               <span class="material-symbols-outlined mt-0.5">
                 {{
@@ -69,6 +75,7 @@
           </transition>
         </div>
 
+        <!-- HR Notice -->
         <div class="mt-4 bg-surface p-3 border border-outline-variant text-center">
           <p class="font-memo-mono text-memo-mono text-on-surface-variant">
             Notificación de RRHH: Falsificar escaneos resultará en acción
@@ -77,6 +84,7 @@
         </div>
       </section>
 
+      <!-- Panel derecho: Registro reciente -->
       <section class="w-full md:w-1/3 min-w-[320px] bg-secondary-container p-6 flex flex-col gap-6">
         <div
           class="flex-1 flex flex-col bg-surface border border-outline-variant shadow-[2px_2px_0_0_#8C8C8C] rounded overflow-hidden">
@@ -95,10 +103,10 @@
             <div v-for="log in logs" :key="log.id"
               class="bg-surface border border-outline-variant p-3 flex items-center justify-between relative overflow-hidden">
               <div class="absolute left-0 top-0 bottom-0 w-1" :class="log.tipo === 'exito'
-                ? 'bg-status-punctual'
-                : log.tipo === 'retraso'
-                  ? 'bg-status-delay'
-                  : 'bg-status-absence'
+                  ? 'bg-status-punctual'
+                  : log.tipo === 'retraso'
+                    ? 'bg-status-delay'
+                    : 'bg-status-absence'
                 "></div>
 
               <div class="flex items-center gap-4 pl-2">
@@ -119,10 +127,10 @@
               </div>
 
               <span class="material-symbols-outlined" :class="log.tipo === 'exito'
-                ? 'text-status-punctual'
-                : log.tipo === 'retraso'
-                  ? 'text-status-delay'
-                  : 'text-status-absence'
+                  ? 'text-status-punctual'
+                  : log.tipo === 'retraso'
+                    ? 'text-status-delay'
+                    : 'text-status-absence'
                 ">
                 {{
                   log.tipo === "exito"
@@ -151,14 +159,10 @@ const feedback = ref(null);
 const logs = ref([]);
 const horaActual = ref("");
 const procesando = ref(false);
-
 let stream = null;
 let animFrame = null;
 let feedbackTimer = null;
 let relojInterval = null;
-
-// Variable global para rastrear en qué día estamos "visualmente" y evitar el Efecto Medianoche
-let diaActualVisual = new Date().toLocaleDateString('en-CA');
 
 onMounted(async () => {
   actualizarHora();
@@ -167,7 +171,7 @@ onMounted(async () => {
   // Cargar registros del día al iniciar
   await cargarRegistrosHoy();
 
-  // Realtime unificado para nuevos registros (Entradas) y actualizaciones (Salidas)
+  // Realtime para nuevos registros
   supabase
     .channel("asistencias-scanner")
     .on(
@@ -178,9 +182,6 @@ onMounted(async () => {
         table: "asistencias",
       },
       async (payload) => {
-        // Si esta misma pantalla acaba de procesar el QR, ignoramos el realtime para no duplicar el log
-        if (procesando.value) return;
-
         const { data: emp } = await supabase
           .from("empleado")
           .select("nombres, apellido_paterno, foto_url")
@@ -193,45 +194,17 @@ onMounted(async () => {
             `${emp.nombres} ${emp.apellido_paterno}`,
             emp.foto_url,
             "Entrada",
-            tipo
+            tipo,
           );
         }
-      }
-    )
-    .on(
-      "postgres_changes",
-      {
-        event: "UPDATE",
-        schema: "public",
-        table: "asistencias",
       },
-      async (payload) => {
-        // Detectar si fue una actualización de salida y si no fue generada por esta misma pantalla
-        if (payload.new.hora_salida && !procesando.value) {
-          const { data: emp } = await supabase
-            .from("empleado")
-            .select("nombres, apellido_paterno, foto_url")
-            .eq("id_empleado", payload.new.id_empleado)
-            .single();
-
-          if (emp) {
-            const tipo = payload.new.estatus.includes("Anticipada") ? "retraso" : "exito";
-            agregarLog(
-              `${emp.nombres} ${emp.apellido_paterno}`,
-              emp.foto_url,
-              "Salida",
-              tipo
-            );
-          }
-        }
-      }
     )
     .subscribe();
 
-  // Configuración de la Cámara
+  // Cámara
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user" },
+      video: { facingMode: "environment" },
     });
     videoEl.value.srcObject = stream;
     videoEl.value.play();
@@ -240,18 +213,18 @@ onMounted(async () => {
     mostrarFeedback(
       "error",
       "Sin acceso a cámara",
-      "Verifica los permisos del navegador."
+      "Verifica los permisos del navegador.",
     );
   }
 });
 
 async function cargarRegistrosHoy() {
-  const hoy = new Date().toLocaleDateString('en-CA');
+  const hoy = new Date().toISOString().split("T")[0];
 
   const { data } = await supabase
     .from("asistencias")
     .select(
-      "id_asistencias, estado, hora_entrada, hora_salida, id_empleado, empleado(nombres, apellido_paterno, foto_url)"
+      "id_asistencias, estado, hora_entrada, hora_salida, id_empleado, empleado(nombres, apellido_paterno, foto_url)",
     )
     .eq("fecha", hoy)
     .order("id_asistencias", { ascending: false })
@@ -276,7 +249,7 @@ async function cargarRegistrosHoy() {
 
 onUnmounted(() => {
   if (stream) stream.getTracks().forEach((t) => t.stop());
-  if (animFrame) clearTimeout(animFrame); // Usamos clearTimeout porque cambiamos a setTimeout
+  if (animFrame) cancelAnimationFrame(animFrame);
   if (relojInterval) clearInterval(relojInterval);
   if (feedbackTimer) clearTimeout(feedbackTimer);
 });
@@ -305,193 +278,166 @@ function escanear() {
     procesarQR(code.data);
   }
 
-  // Optimización de rendimiento: Escanear 4 veces por segundo en lugar de 60
-  animFrame = setTimeout(() => requestAnimationFrame(escanear), 250);
+  animFrame = requestAnimationFrame(escanear);
 }
 
 async function procesarQR(contenido) {
-  const partes = contenido.split('|')
+  const partes = contenido.split("|");
   if (partes.length !== 2) {
-    mostrarFeedback('error', 'QR Inválido', 'Este código no pertenece al sistema Dunder Mifflin.')
-    return
+    mostrarFeedback(
+      "error",
+      "QR Inválido",
+      "Este código no pertenece al sistema Dunder Mifflin.",
+    );
+    return;
   }
 
-  const idEmpleado = parseInt(partes[0])
-  const tipoQR = partes[1]
+  const idEmpleado = parseInt(partes[0]);
+  const tipoQR = partes[1];
 
-  if (isNaN(idEmpleado) || !['entrada', 'salida'].includes(tipoQR)) {
-    mostrarFeedback('error', 'QR Inválido', 'No se pudo identificar al empleado.')
-    return
+  if (isNaN(idEmpleado) || !["entrada", "salida"].includes(tipoQR)) {
+    mostrarFeedback(
+      "error",
+      "QR Inválido",
+      "No se pudo identificar al empleado.",
+    );
+    return;
   }
 
-  procesando.value = true
+  procesando.value = true;
 
   const { data: emp } = await supabase
-    .from('empleado')
-    .select('id_empleado, nombres, apellido_paterno, foto_url, horario(hora_entrada, hora_salida, minutos_tolerancia)')
-    .eq('id_empleado', idEmpleado)
-    .single()
+    .from("empleado")
+    .select(
+      "id_empleado, nombres, apellido_paterno, foto_url, horario(hora_entrada, hora_salida, minutos_tolerancia)",
+    )
+    .eq("id_empleado", idEmpleado)
+    .single();
 
   if (!emp) {
-    mostrarFeedback('error', 'Empleado no encontrado', `ID ${idEmpleado} no existe.`)
-    procesando.value = false
-    return
+    mostrarFeedback(
+      "error",
+      "Empleado no encontrado",
+      `ID ${idEmpleado} no existe en el sistema.`,
+    );
+    procesando.value = false;
+    return;
   }
 
-  const nombre = `${emp.nombres} ${emp.apellido_paterno}`
-  const ahora = new Date()
-  const horaStr = ahora.toTimeString().split(' ')[0]
-  const fechaStr = ahora.toLocaleDateString('en-CA')
-  const horario = emp.horario?.[0]
+  const nombre = `${emp.nombres} ${emp.apellido_paterno}`;
+  const ahora = new Date();
+  const horaStr = ahora.toTimeString().split(" ")[0];
+  const fechaStr = ahora.toISOString().split("T")[0];
+  const accion = tipoQR === "entrada" ? "Entrada" : "Salida";
 
-  if (tipoQR === 'entrada') {
+  if (tipoQR === "entrada") {
     const { data: yaRegistro } = await supabase
-      .from('asistencias')
-      .select('id_asistencias, estado')
-      .eq('id_empleado', idEmpleado)
-      .eq('fecha', fechaStr)
-      .maybeSingle()
+      .from("asistencias")
+      .select("id_asistencias")
+      .eq("id_empleado", idEmpleado)
+      .eq("fecha", fechaStr)
+      .maybeSingle();
 
-    if (yaRegistro && yaRegistro.estado !== 'falta') {
-      mostrarFeedback('error', 'Ya registrado', `${nombre} ya registró entrada hoy.`)
-      agregarLog(nombre, emp.foto_url, 'Entrada', 'error')
-      procesando.value = false
-      return
+    if (yaRegistro) {
+      mostrarFeedback(
+        "error",
+        "Ya registrado",
+        `${nombre} ya registró entrada hoy.`,
+      );
+      agregarLog(nombre, emp.foto_url, accion, "error");
+      procesando.value = false;
+      return;
     }
 
-    // Si ya tiene falta automática, actualizarla con la entrada real
-    if (yaRegistro?.estado === 'falta') {
-      const { error } = await supabase
-        .from('asistencias')
-        .update({
-          hora_entrada: horaStr,
-          estado: 'leve_retraso',
-          estatus: 'Retraso Mayor'
-        })
-        .eq('id_asistencias', yaRegistro.id_asistencias)
-
-      mostrarFeedback('retraso', '⚠ Falta actualizada', `${nombre} llegó tarde pero se actualizó el registro.`)
-      agregarLog(nombre, emp.foto_url, 'Entrada', 'retraso')
-      setTimeout(() => { procesando.value = false }, 3000)
-      return
-    }
-
-    let estado = 'activo'
-    let estatus = 'Puntual'
-    let tipo = 'exito'
-    let titulo = 'Entrada Registrada'
-    let mensaje = `${nombre} — ${horaStr}`
+    const horario = emp.horario?.[0];
+    let estado = "activo";
+    let estatus = "Puntual";
 
     if (horario) {
-      const [hE, mE] = horario.hora_entrada.split(':').map(Number)
-      const tolerancia = horario.minutos_tolerancia || 15
-
-      // Tiempo de entrada esperado
-      const entradaEsperada = new Date(ahora)
-      entradaEsperada.setHours(hE, mE, 0, 0)
-
-      // Límites
-      const unaHoraAntes = new Date(entradaEsperada.getTime() - 60 * 60 * 1000)
-      const limiteRetraso = new Date(entradaEsperada.getTime() + tolerancia * 60 * 1000)
-      const unaHoraDespues = new Date(entradaEsperada.getTime() + 60 * 60 * 1000)
-
-      if (ahora < unaHoraAntes) {
-        estado = 'activo'
-        estatus = 'Puntual'
-        tipo = 'retraso'
-        titulo = '⚠ Registro Inusual'
-        mensaje = `${nombre} registró entrada muy temprano (${horaStr}). Se guardó el registro.`
-      } else if (ahora > unaHoraDespues) {
-        estado = 'leve_retraso'
-        estatus = 'Retraso Mayor'
-        tipo = 'retraso'
-        titulo = '⚠ Entrada muy tarde'
-        mensaje = `${nombre} registró entrada inusualmente tarde (${horaStr}).`
-      } else if (ahora > limiteRetraso) {
-        estado = 'leve_retraso'
-        estatus = 'Retraso'
-        tipo = 'retraso'
-        titulo = '⚠ Entrada con Retraso'
-        mensaje = `${nombre} llegó tarde. Hora: ${horaStr}`
+      const [hE, mE] = horario.hora_entrada.split(":").map(Number);
+      const tolerancia = horario.minutos_tolerancia || 15;
+      const entradaLimite = new Date(ahora);
+      entradaLimite.setHours(hE, mE + tolerancia, 0);
+      if (ahora > entradaLimite) {
+        estado = "leve_retraso";
+        estatus = "Retraso";
       }
     }
 
-    const { error: insertError } = await supabase
-      .from('asistencias')
+    const { data: insertData, error: insertError } = await supabase
+      .from("asistencias")
       .insert({
         id_empleado: idEmpleado,
         fecha: fechaStr,
         hora_entrada: horaStr,
         estado,
-        estatus
-      })
+      });
+    console.log("Insert entrada:", insertData, insertError);
 
-    mostrarFeedback(tipo, titulo, mensaje)
-    agregarLog(nombre, emp.foto_url, 'Entrada', tipo)
+    const tipo = estado === "activo" ? "exito" : "retraso";
+    const titulo =
+      estado === "activo" ? "Entrada Registrada" : "⚠ Entrada con Retraso";
+    const mensaje =
+      estado === "activo"
+        ? `${nombre} — ${horaStr}`
+        : `${nombre} llegó tarde. Hora: ${horaStr}`;
 
+    mostrarFeedback(tipo, titulo, mensaje);
+    agregarLog(nombre, emp.foto_url, accion, tipo);
   } else {
-    // SALIDA
     const { data: asistencia } = await supabase
-      .from('asistencias')
-      .select('id_asistencias, hora_salida')
-      .eq('id_empleado', idEmpleado)
-      .eq('fecha', fechaStr)
-      .maybeSingle()
+      .from("asistencias")
+      .select("id_asistencias, hora_salida")
+      .eq("id_empleado", idEmpleado)
+      .eq("fecha", fechaStr)
+      .single();
 
     if (!asistencia) {
-      mostrarFeedback('error', 'Sin entrada registrada', `${nombre} no tiene entrada hoy.`)
-      procesando.value = false
-      return
+      mostrarFeedback(
+        "error",
+        "Sin entrada registrada",
+        `${nombre} no tiene entrada registrada hoy.`,
+      );
+      procesando.value = false;
+      return;
     }
 
     if (asistencia.hora_salida) {
-      mostrarFeedback('error', 'Ya registró salida', `${nombre} ya registró salida hoy.`)
-      procesando.value = false
-      return
+      mostrarFeedback(
+        "error",
+        "Ya registró salida",
+        `${nombre} ya registró salida hoy.`,
+      );
+      procesando.value = false;
+      return;
     }
 
-    let estatusSalida = 'Salida a Tiempo'
-    let tipo = 'exito'
-    let titulo = 'Salida Registrada'
-    let mensaje = `${nombre} — ${horaStr}`
+    const horario = emp.horario?.[0];
+    let estatusSalida = "Salida a Tiempo";
 
     if (horario) {
-      const [hS, mS] = horario.hora_salida.split(':').map(Number)
-
-      const salidaEsperada = new Date(ahora)
-      salidaEsperada.setHours(hS, mS, 0, 0)
-
-      const unaHoraAntes = new Date(salidaEsperada.getTime() - 60 * 60 * 1000)
-      const unaHoraDespues = new Date(salidaEsperada.getTime() + 60 * 60 * 1000)
-
-      if (ahora < unaHoraAntes) {
-        estatusSalida = 'Salida Anticipada'
-        tipo = 'retraso'
-        titulo = '⚠ Salida muy temprana'
-        mensaje = `${nombre} salió inusualmente temprano (${horaStr}).`
-      } else if (ahora < salidaEsperada) {
-        estatusSalida = 'Salida Anticipada'
-        tipo = 'retraso'
-        titulo = '⚠ Salida Anticipada'
-        mensaje = `${nombre} salió antes del horario (${horaStr}).`
-      } else if (ahora > unaHoraDespues) {
-        estatusSalida = 'Salida a Tiempo'
-        tipo = 'retraso'
-        titulo = '⚠ Salida muy tardía'
-        mensaje = `${nombre} registró salida inusualmente tarde (${horaStr}).`
-      }
+      const [hS, mS] = horario.hora_salida.split(":").map(Number);
+      const salidaEsperada = new Date(ahora);
+      salidaEsperada.setHours(hS, mS, 0);
+      if (ahora < salidaEsperada) estatusSalida = "Salida Anticipada";
     }
 
-    const { error: updateError } = await supabase
-      .from('asistencias')
-      .update({ hora_salida: horaStr, estatus: estatusSalida })
-      .eq('id_asistencias', asistencia.id_asistencias)
+    const { data: updateData, error: updateError } = await supabase
+      .from("asistencias")
+      .update({
+        hora_salida: horaStr,
+        estatus: estatusSalida, // Salida a Tiempo, Salida Anticipada, Sin Registro
+      })
+      .eq("id_asistencias", asistencia.id_asistencias);
+    console.log("Update salida:", updateData, updateError);
 
-    mostrarFeedback(tipo, titulo, mensaje)
-    agregarLog(nombre, emp.foto_url, 'Salida', tipo)
+    mostrarFeedback("exito", "✓ Salida Registrada", `${nombre} — ${horaStr}`);
+    agregarLog(nombre, emp.foto_url, accion, "exito");
   }
 
-  setTimeout(() => { procesando.value = false }, 3000)
+  setTimeout(() => {
+    procesando.value = false;
+  }, 3000);
 }
 
 function mostrarFeedback(tipo, titulo, mensaje) {
@@ -503,14 +449,6 @@ function mostrarFeedback(tipo, titulo, mensaje) {
 }
 
 function agregarLog(nombre, foto, accion, tipo) {
-  const hoyReal = new Date().toLocaleDateString('en-CA');
-
-  // Lógica para curar el "Efecto Medianoche"
-  if (hoyReal !== diaActualVisual) {
-    logs.value = [];
-    diaActualVisual = hoyReal;
-  }
-
   logs.value.unshift({
     id: Date.now(),
     nombre,
@@ -522,7 +460,6 @@ function agregarLog(nombre, foto, accion, tipo) {
     }),
     tipo,
   });
-  
   // Máximo 10 en el log
   if (logs.value.length > 10) logs.value.pop();
 }
