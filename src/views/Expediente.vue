@@ -426,7 +426,7 @@ async function guardarCambios() {
     // Asumo que tu tabla de acceso se llama "cuenta" y el campo "primer_inicio_sesion"
     if (form.value.reiniciar_password) {
       const { error: errorCuenta } = await supabase.from('cuenta').update({
-        primer_inicio_sesion: true
+        primer_inicio: true
       }).eq('id_empleado', route.params.id)
       
       if (errorCuenta) throw new Error('Error al forzar reinicio de clave: ' + errorCuenta.message)
