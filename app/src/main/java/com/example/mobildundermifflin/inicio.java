@@ -1,7 +1,5 @@
 package com.example.mobildundermifflin;
 
-import android.content.Context;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -17,19 +15,17 @@ import androidx.fragment.app.Fragment;
 import com.bumptech.glide.Glide;
 import com.example.mobildundermifflin.models.Empleado;
 import com.example.mobildundermifflin.models.Asistencia;
-import com.example.mobildundermifflin.models.SolicitudAusencia;
 import com.example.mobildundermifflin.models.Vacaciones;
 import com.example.mobildundermifflin.network.SupabaseClient;
 import com.example.mobildundermifflin.utils.UIHelper;
 import com.google.android.material.imageview.ShapeableImageView;
 
 import java.util.List;
-import java.util.Map;
-
-import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import android.os.Handler;
+import android.os.Looper;
 
 public class inicio extends Fragment {
 
@@ -37,29 +33,14 @@ public class inicio extends Fragment {
     private TextView tvNombreUsuario, tvDepartamento, tvTurno;
     private TextView tvAsistencia, tvFaltas, tvTiempo, tvDiasRestantes;
     private ImageButton btnNotificaciones;
+    private Handler handlerNotificaciones = new Handler(Looper.getMainLooper());
+    private Runnable runnableNotificaciones;
 
     public inicio() {}
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_inicio, container, false);
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        // Le pedimos al MainActivity que evalúe y pinte NUESTRA campana
-        if (getActivity() instanceof MainActivity && btnNotificaciones != null) {
-            ((MainActivity) getActivity()).verificarNotificacionesGlobal(btnNotificaciones);
-        }
-    }
-
-    @Override
-    public void onHiddenChanged(boolean hidden) {
-        super.onHiddenChanged(hidden);
-        if (!hidden && getActivity() instanceof MainActivity && btnNotificaciones != null) {
-            ((MainActivity) getActivity()).verificarNotificacionesGlobal(btnNotificaciones);
-        }
     }
 
     @Override
@@ -102,8 +83,46 @@ public class inicio extends Fragment {
             });
         }
 
+        // Preparamos la tarea repetitiva
+        runnableNotificaciones = new Runnable() {
+            @Override
+            public void run() {
+                if (getActivity() instanceof MainActivity && btnNotificaciones != null) {
+                    ((MainActivity) getActivity()).verificarNotificacionesGlobal(btnNotificaciones);
+                }
+                // Volver a ejecutar esto mismo en 10 segundos (10000 milisegundos)
+                handlerNotificaciones.postDelayed(this, 10000);
+            }
+        };
+
         // 4. Cargar el resto de los datos
         cargarDatosEmpleado();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Cuando el usuario entra a la pantalla, iniciamos el reloj
+        handlerNotificaciones.post(runnableNotificaciones);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        // ¡SÚPER IMPORTANTE! Cuando el usuario se va a otra pantalla o minimiza la app,
+        // apagamos el reloj para no gastar batería ni datos de internet a lo tonto.
+        handlerNotificaciones.removeCallbacks(runnableNotificaciones);
+    }
+
+    @Override
+    public void onHiddenChanged(boolean hidden) {
+        super.onHiddenChanged(hidden);
+        if (!hidden) {
+            // Si el fragmento se vuelve a mostrar, reiniciamos el ciclo rápido
+            handlerNotificaciones.post(runnableNotificaciones);
+        } else {
+            handlerNotificaciones.removeCallbacks(runnableNotificaciones);
+        }
     }
 
 

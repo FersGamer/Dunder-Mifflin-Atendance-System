@@ -29,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout navInicio, navQr, navAsistencia, navSolicitudes, nav_cierreSesion;
     private ImageView ivInicio, ivQr, ivAsistencia, ivSolicitudes, iv_cierreSesion;
     private TextView tvInicio, tvQr, tvAsistencia, tvSolicitudes, tv_cierreSesion;
+    private boolean hayNotificacionesNuevas = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -140,35 +141,47 @@ public class MainActivity extends AppCompatActivity {
     public void verificarNotificacionesGlobal(ImageButton btnCampana) {
         if (btnCampana == null) return;
 
+        // ¡TRUCO DE UI! Pintamos al instante con lo que "recordamos" de la última vez,
+        // así eliminamos el retraso visual al cambiar de pestaña.
+        if (hayNotificacionesNuevas) {
+            btnCampana.setColorFilter(Color.parseColor("#FF9800"), android.graphics.PorterDuff.Mode.SRC_IN);
+        } else {
+            btnCampana.clearColorFilter();
+        }
+
         int idEmpleado = SessionManager.getIdEmpleado(this);
         if (idEmpleado == -1) return;
 
+        // Ahora sí, vamos a internet a confirmar si hay algo nuevo
         SupabaseClient.getApi()
                 .getSolicitudesPorEmpleado("eq." + idEmpleado, "aprobacion,visto", "fecha_solicitud.desc")
                 .enqueue(new Callback<List<SolicitudAusencia>>() {
                     @Override
                     public void onResponse(Call<List<SolicitudAusencia>> call, Response<List<SolicitudAusencia>> response) {
                         if (response.isSuccessful() && response.body() != null) {
-                            boolean hayNuevas = false;
+                            boolean estadoActual = false;
 
                             for (SolicitudAusencia sol : response.body()) {
                                 String estado = sol.aprobacion != null ? sol.aprobacion.trim() : "";
                                 if (!estado.equalsIgnoreCase("Pendiente") && !sol.visto) {
-                                    hayNuevas = true;
+                                    estadoActual = true;
                                     break;
                                 }
                             }
 
-                            // Necesitamos ser finales para usarlos dentro del hilo de la UI
-                            final boolean pintarNaranja = hayNuevas;
+                            // Si el estado en la BD es distinto al que recordábamos, actualizamos la memoria y la UI
+                            if (estadoActual != hayNotificacionesNuevas) {
+                                hayNotificacionesNuevas = estadoActual;
+                                final boolean pintarNaranja = hayNotificacionesNuevas;
 
-                            runOnUiThread(() -> {
-                                if (pintarNaranja) {
-                                    btnCampana.setColorFilter(Color.parseColor("#FF9800"), android.graphics.PorterDuff.Mode.SRC_IN);
-                                } else {
-                                    btnCampana.clearColorFilter();
-                                }
-                            });
+                                runOnUiThread(() -> {
+                                    if (pintarNaranja) {
+                                        btnCampana.setColorFilter(Color.parseColor("#FF9800"), android.graphics.PorterDuff.Mode.SRC_IN);
+                                    } else {
+                                        btnCampana.clearColorFilter();
+                                    }
+                                });
+                            }
                         }
                     }
 
@@ -180,6 +193,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void marcarNotificacionesComoVistasGlobal() {
+        hayNotificacionesNuevas = false;
         int idEmpleado = SessionManager.getIdEmpleado(this);
         if (idEmpleado == -1) return;
 
