@@ -246,7 +246,7 @@ const notificacionesFiltradas = computed(() => {
 // Redirección al expediente para evaluar la solicitud
 function irAExpediente(idEmpleado) {
   if (idEmpleado) {
-    router.push(`/expediente/${idEmpleado}`)
+    router.push(`/perfilempleado/${idEmpleado}`)
   }
 }
 
