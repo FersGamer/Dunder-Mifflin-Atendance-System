@@ -287,6 +287,7 @@ const route = useRoute()
 const loading = ref(true)
 const loadingPermisos = ref(true)
 const empleado = ref(null)
+const saldoVacaciones = ref({ otorgados: 0, consumidos: 0 })
 const horario = ref(null)
 const solicitudes = ref([])
 const mostrarConfirmar = ref(false)
@@ -337,9 +338,25 @@ onMounted(async () => {
   await Promise.all([
     cargarEmpleado(id),
     cargarAsistencias(id),
-    cargarSolicitudes(id)
+    cargarSolicitudes(id),
+    cargarSaldo(id)
   ])
 })
+
+async function cargarSaldo(id) {
+  const { data } = await supabase
+    .from('saldo_vacaciones')
+    .select('dias_otorgados, dias_consumidos')
+    .eq('id_empleado', id)
+    .single()
+
+  if (data) {
+    saldoVacaciones.value = {
+      otorgados: data.dias_otorgados || 0,
+      consumidos: data.dias_consumidos || 0
+    }
+  }
+}
 
 async function cargarEmpleado(id) {
   const { data } = await supabase
@@ -534,7 +551,8 @@ const calendarioDias = computed(() => {
       const tipoPermiso = permisoActivo.faltas?.faltas?.toLowerCase() || ''
       if (tipoPermiso.includes('vacacion') || tipoPermiso.includes('vacaciones')) {
         clase = 'bg-blue-500 text-white border-blue-600'
-        tooltip = 'Vacaciones'
+        const disponibles = saldoVacaciones.value.otorgados - saldoVacaciones.value.consumidos
+        tooltip = `Vacaciones (Saldo restante: ${disponibles} días)`
       } else {
         clase = 'bg-purple-500 text-white border-purple-600'
         tooltip = `Falta Autorizada (${permisoActivo.faltas?.faltas || 'Permiso'})`
