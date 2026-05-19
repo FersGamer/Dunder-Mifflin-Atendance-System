@@ -19,9 +19,6 @@
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">lock</span>
             <input v-model="password" class="w-full pl-10 pr-4 py-3 bg-surface-bright border-b-2 border-outline focus:border-primary focus:ring-0 font-body-md text-body-md text-on-surface placeholder-outline-variant transition-colors" id="password" placeholder="••••••••" type="password"/>
           </div>
-          <div class="mt-2 flex justify-end">
-            <a class="font-body-sm text-body-sm text-primary hover:underline" href="#">¿Olvidó su contraseña?</a>
-          </div>
         </div>
         <div v-if="errorMsg" class="bg-error-container text-on-error-container p-3 rounded flex items-start gap-2 border border-error">
           <span class="material-symbols-outlined">error</span>
